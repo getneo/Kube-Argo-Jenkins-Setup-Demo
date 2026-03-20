@@ -1,0 +1,373 @@
+// Jenkins CI Pipeline for Demo Application
+// This pipeline builds, tests, scans, and deploys the demo application
+
+pipeline {
+    agent any
+
+    // Environment variables used throughout the pipeline
+    environment {
+        // Application details
+        APP_NAME = 'demo-app'
+        APP_VERSION = "${env.BUILD_NUMBER}"
+
+        // Docker registry (change to your registry)
+        DOCKER_REGISTRY = 'docker.io'
+        DOCKER_IMAGE = "${DOCKER_REGISTRY}/your-username/${APP_NAME}"
+
+        // Git repository for manifests
+        GIT_REPO = 'https://github.com/your-username/CKA.git'
+        GIT_BRANCH = 'main'
+
+        // Credentials IDs (configured in Jenkins)
+        DOCKER_CREDENTIALS_ID = 'docker-registry-credentials'
+        GIT_CREDENTIALS_ID = 'git-credentials'
+
+        // Build information
+        GIT_COMMIT_SHORT = sh(
+            script: "git rev-parse --short HEAD",
+            returnStdout: true
+        ).trim()
+        BUILD_TIME = sh(
+            script: "date -u +%Y-%m-%dT%H:%M:%SZ",
+            returnStdout: true
+        ).trim()
+    }
+
+    // Pipeline options
+    options {
+        // Keep last 10 builds
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+
+        // Timeout after 30 minutes
+        timeout(time: 30, unit: 'MINUTES')
+
+        // Disable concurrent builds
+        disableConcurrentBuilds()
+
+        // Add timestamps to console output
+        timestamps()
+    }
+
+    // Pipeline stages
+    stages {
+
+        // Stage 1: Checkout source code
+        stage('Checkout') {
+            steps {
+                script {
+                    echo "=========================================="
+                    echo "Stage 1: Checkout"
+                    echo "=========================================="
+                    echo "Checking out code from ${GIT_REPO}"
+                    echo "Branch: ${GIT_BRANCH}"
+                    echo "Commit: ${GIT_COMMIT_SHORT}"
+                }
+
+                // Checkout code from Git
+                checkout scm
+
+                // Display Git information
+                sh '''
+                    echo "Git Information:"
+                    git log -1 --pretty=format:"Commit: %h%nAuthor: %an%nDate: %ad%nMessage: %s"
+                    echo ""
+                '''
+            }
+        }
+
+        // Stage 2: Build and Test Application
+        stage('Build & Test') {
+            steps {
+                script {
+                    echo "=========================================="
+                    echo "Stage 2: Build & Test"
+                    echo "=========================================="
+                }
+
+                dir('demo-app') {
+                    // Download Go dependencies
+                    sh '''
+                        echo "Downloading Go dependencies..."
+                        go mod download
+                        go mod verify
+                    '''
+
+                    // Run Go tests
+                    sh '''
+                        echo "Running unit tests..."
+                        go test -v -race -coverprofile=coverage.out ./...
+
+                        echo "Generating coverage report..."
+                        go tool cover -html=coverage.out -o coverage.html
+
+                        echo "Coverage summary:"
+                        go tool cover -func=coverage.out | tail -1
+                    '''
+
+                    // Build Go binary
+                    sh '''
+                        echo "Building Go binary..."
+                        CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+                            -ldflags="-w -s \
+                            -X main.Version=${APP_VERSION} \
+                            -X main.BuildTime=${BUILD_TIME} \
+                            -X main.GitCommit=${GIT_COMMIT_SHORT}" \
+                            -o bin/demo-app \
+                            cmd/server/main.go
+
+                        echo "Binary built successfully:"
+                        ls -lh bin/demo-app
+                    '''
+                }
+            }
+
+            post {
+                success {
+                    echo "✓ Build and tests passed"
+                }
+                failure {
+                    echo "✗ Build or tests failed"
+                }
+            }
+        }
+
+        // Stage 3: Build Docker Image
+        stage('Docker Build') {
+            steps {
+                script {
+                    echo "=========================================="
+                    echo "Stage 3: Docker Build"
+                    echo "=========================================="
+                    echo "Building Docker image: ${DOCKER_IMAGE}"
+                }
+
+                dir('demo-app') {
+                    // Build Docker image with multiple tags
+                    sh """
+                        echo "Building Docker image..."
+                        docker build \
+                            --build-arg VERSION=${APP_VERSION} \
+                            --build-arg BUILD_TIME=${BUILD_TIME} \
+                            --build-arg GIT_COMMIT=${GIT_COMMIT_SHORT} \
+                            -t ${DOCKER_IMAGE}:${APP_VERSION} \
+                            -t ${DOCKER_IMAGE}:${GIT_COMMIT_SHORT} \
+                            -t ${DOCKER_IMAGE}:latest \
+                            .
+
+                        echo "Docker images built:"
+                        docker images | grep ${APP_NAME}
+                    """
+                }
+            }
+
+            post {
+                success {
+                    echo "✓ Docker image built successfully"
+                }
+                failure {
+                    echo "✗ Docker build failed"
+                }
+            }
+        }
+
+        // Stage 4: Security Scan
+        stage('Security Scan') {
+            steps {
+                script {
+                    echo "=========================================="
+                    echo "Stage 4: Security Scan"
+                    echo "=========================================="
+                    echo "Scanning image: ${DOCKER_IMAGE}:${APP_VERSION}"
+                }
+
+                // Scan Docker image with Trivy
+                sh """
+                    echo "Running Trivy security scan..."
+
+                    # Install Trivy if not present
+                    if ! command -v trivy &> /dev/null; then
+                        echo "Installing Trivy..."
+                        wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+                        echo "deb https://aquasecurity.github.io/trivy-repo/deb \$(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+                        sudo apt-get update
+                        sudo apt-get install trivy -y
+                    fi
+
+                    # Scan image
+                    trivy image \
+                        --severity HIGH,CRITICAL \
+                        --format table \
+                        --output trivy-report.txt \
+                        ${DOCKER_IMAGE}:${APP_VERSION}
+
+                    # Display report
+                    cat trivy-report.txt
+
+                    # Fail if critical vulnerabilities found (optional)
+                    # trivy image --exit-code 1 --severity CRITICAL ${DOCKER_IMAGE}:${APP_VERSION}
+                """
+            }
+
+            post {
+                always {
+                    // Archive security scan report
+                    archiveArtifacts artifacts: 'trivy-report.txt', allowEmptyArchive: true
+                }
+                success {
+                    echo "✓ Security scan completed"
+                }
+                failure {
+                    echo "✗ Security scan failed or found critical vulnerabilities"
+                }
+            }
+        }
+
+        // Stage 5: Push Docker Image
+        stage('Push Image') {
+            steps {
+                script {
+                    echo "=========================================="
+                    echo "Stage 5: Push Image"
+                    echo "=========================================="
+                    echo "Pushing to registry: ${DOCKER_REGISTRY}"
+                }
+
+                // Login and push to Docker registry
+                withCredentials([usernamePassword(
+                    credentialsId: "${DOCKER_CREDENTIALS_ID}",
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS' //pragma: allowlist secret
+                )]) {
+                    sh """
+                        echo "Logging in to Docker registry..."
+                        echo \$DOCKER_PASS | docker login ${DOCKER_REGISTRY} -u \$DOCKER_USER --password-stdin
+
+                        echo "Pushing images..."
+                        docker push ${DOCKER_IMAGE}:${APP_VERSION}
+                        docker push ${DOCKER_IMAGE}:${GIT_COMMIT_SHORT}
+                        docker push ${DOCKER_IMAGE}:latest
+
+                        echo "Images pushed successfully"
+                        docker logout ${DOCKER_REGISTRY}
+                    """
+                }
+            }
+
+            post {
+                success {
+                    echo "✓ Images pushed to registry"
+                }
+                failure {
+                    echo "✗ Failed to push images"
+                }
+            }
+        }
+
+        // Stage 6: Update Kubernetes Manifests
+        stage('Update Manifests') {
+            steps {
+                script {
+                    echo "=========================================="
+                    echo "Stage 6: Update Manifests"
+                    echo "=========================================="
+                    echo "Updating image tag in Helm values"
+                }
+
+                // Update Helm values with new image tag
+                withCredentials([usernamePassword(
+                    credentialsId: "${GIT_CREDENTIALS_ID}",
+                    usernameVariable: 'GIT_USER',
+                    passwordVariable: 'GIT_PASS' // pragma: allowlist secret
+                )]) {
+                    sh """
+                        # Configure Git
+                        git config user.email "jenkins@example.com"
+                        git config user.name "Jenkins CI"
+
+                        # Update Helm values file
+                        cd demo-app/helm-chart/demo-app
+
+                        # Update image tag in values.yaml
+                        sed -i 's/tag: .*/tag: "${APP_VERSION}"/' values.yaml
+
+                        # Show changes
+                        echo "Changes made:"
+                        git diff values.yaml
+
+                        # Commit and push changes
+                        git add values.yaml
+                        git commit -m "chore: update image tag to ${APP_VERSION} [skip ci]" || echo "No changes to commit"
+
+                        # Push to repository
+                        git push https://\${GIT_USER}:\${GIT_PASS}@github.com/your-username/CKA.git HEAD:${GIT_BRANCH}
+
+                        echo "Manifests updated successfully"
+                    """
+                }
+            }
+
+            post {
+                success {
+                    echo "✓ Manifests updated in Git"
+                    echo "ArgoCD will detect and sync the changes"
+                }
+                failure {
+                    echo "✗ Failed to update manifests"
+                }
+            }
+        }
+    }
+
+    // Post-build actions
+    post {
+        always {
+            echo "=========================================="
+            echo "Pipeline Completed"
+            echo "=========================================="
+            echo "Build Number: ${BUILD_NUMBER}"
+            echo "App Version: ${APP_VERSION}"
+            echo "Git Commit: ${GIT_COMMIT_SHORT}"
+            echo "Docker Image: ${DOCKER_IMAGE}:${APP_VERSION}"
+
+            // Clean up Docker images to save space
+            sh """
+                echo "Cleaning up local Docker images..."
+                docker rmi ${DOCKER_IMAGE}:${APP_VERSION} || true
+                docker rmi ${DOCKER_IMAGE}:${GIT_COMMIT_SHORT} || true
+                docker system prune -f
+            """
+
+            // Archive artifacts
+            archiveArtifacts artifacts: 'demo-app/coverage.html', allowEmptyArchive: true
+            archiveArtifacts artifacts: 'demo-app/coverage.out', allowEmptyArchive: true
+        }
+
+        success {
+            echo "=========================================="
+            echo "✓ Pipeline Succeeded!"
+            echo "=========================================="
+            echo "The application has been built and deployed successfully."
+            echo "ArgoCD will sync the changes to Kubernetes."
+
+            // Send notification (optional)
+            // slackSend(color: 'good', message: "Build Successful: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
+        }
+
+        failure {
+            echo "=========================================="
+            echo "✗ Pipeline Failed!"
+            echo "=========================================="
+            echo "Check the console output for details."
+
+            // Send notification (optional)
+            // slackSend(color: 'danger', message: "Build Failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
+        }
+
+        unstable {
+            echo "=========================================="
+            echo "⚠ Pipeline Unstable"
+            echo "=========================================="
+            echo "Some tests may have failed or warnings were generated."
+        }
+    }
+}

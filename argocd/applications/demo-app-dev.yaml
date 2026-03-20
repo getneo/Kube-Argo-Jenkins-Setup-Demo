@@ -1,0 +1,243 @@
+# ArgoCD Application for Demo App - Development Environment
+# This file defines how ArgoCD should deploy the demo application to the dev environment
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  # Application name in ArgoCD
+  name: demo-app-dev
+
+  # ArgoCD namespace (where ArgoCD is installed)
+  namespace: argocd
+
+  # Labels for organization
+  labels:
+    app: demo-app
+    environment: development
+    managed-by: argocd
+
+  # Finalizers ensure proper cleanup
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+
+spec:
+  # ArgoCD project (use 'default' or create custom project)
+  project: default
+
+  # Source: Where to get the application manifests
+  source:
+    # Git repository URL
+    repoURL: https://github.com/your-username/CKA.git
+
+    # Branch, tag, or commit to track
+    targetRevision: main
+
+    # Path to Helm chart or manifests
+    path: demo-app/helm-chart/demo-app
+
+    # Helm-specific configuration
+    helm:
+      # Use values-dev.yaml for development environment
+      valueFiles:
+        - values-dev.yaml
+
+      # Override specific values (optional)
+      parameters:
+        - name: replicaCount
+          value: "1"
+        - name: image.tag
+          value: "latest"
+        - name: ingress.hosts[0].host
+          value: "demo-app-dev.local"
+
+      # Release name for Helm
+      releaseName: demo-app-dev
+
+  # Destination: Where to deploy the application
+  destination:
+    # Kubernetes cluster (in-cluster)
+    server: https://kubernetes.default.svc
+
+    # Target namespace
+    namespace: demo-app-dev
+
+  # Sync policy: How ArgoCD should sync the application
+  syncPolicy:
+    # Automated sync configuration
+    automated:
+      # Automatically sync when Git changes detected
+      prune: true        # Delete resources that are no longer in Git
+      selfHeal: true     # Automatically correct drift from desired state
+      allowEmpty: false  # Don't sync if no resources found
+
+    # Sync options
+    syncOptions:
+      - CreateNamespace=true    # Create namespace if it doesn't exist
+      - PruneLast=true          # Prune resources after new resources are healthy
+      - ApplyOutOfSyncOnly=true # Only sync resources that are out of sync
+      - ServerSideApply=true    # Use server-side apply (Kubernetes 1.22+)
+
+    # Retry configuration
+    retry:
+      limit: 5                  # Maximum number of retry attempts
+      backoff:
+        duration: 5s            # Initial retry delay
+        factor: 2               # Backoff factor (exponential)
+        maxDuration: 3m         # Maximum retry delay
+
+  # Ignore differences in certain fields (optional)
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas  # Ignore replica count (managed by HPA)
+
+    - group: ""
+      kind: Service
+      jsonPointers:
+        - /spec/clusterIP  # Ignore cluster IP (assigned by Kubernetes)
+
+  # Health assessment configuration
+  revisionHistoryLimit: 10  # Keep last 10 revisions for rollback
+
+---
+# ArgoCD Application for Demo App - Staging Environment
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: demo-app-staging
+  namespace: argocd
+  labels:
+    app: demo-app
+    environment: staging
+    managed-by: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/your-username/CKA.git
+    targetRevision: main
+    path: demo-app/helm-chart/demo-app
+
+    helm:
+      valueFiles:
+        - values.yaml  # Use default values
+
+      parameters:
+        - name: replicaCount
+          value: "2"
+        - name: image.tag
+          value: "latest"
+        - name: environment
+          value: "staging"
+        - name: ingress.hosts[0].host
+          value: "demo-app-staging.local"
+
+      releaseName: demo-app-staging
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: demo-app-staging
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+
+    syncOptions:
+      - CreateNamespace=true
+      - PruneLast=true
+      - ApplyOutOfSyncOnly=true
+      - ServerSideApply=true
+
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+
+  revisionHistoryLimit: 10
+
+---
+# ArgoCD Application for Demo App - Production Environment
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: demo-app-prod
+  namespace: argocd
+  labels:
+    app: demo-app
+    environment: production
+    managed-by: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/your-username/CKA.git
+    targetRevision: main  # Use 'release' branch for production
+    path: demo-app/helm-chart/demo-app
+
+    helm:
+      valueFiles:
+        - values-prod.yaml  # Use production values
+
+      parameters:
+        - name: replicaCount
+          value: "3"
+        - name: image.tag
+          value: "1.0.0"  # Use specific version, not 'latest'
+        - name: environment
+          value: "production"
+        - name: ingress.hosts[0].host
+          value: "demo-app.example.com"
+
+      releaseName: demo-app-prod
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: demo-app-prod
+
+  syncPolicy:
+    # Manual sync for production (more control)
+    automated:
+      prune: false       # Don't auto-delete in production
+      selfHeal: false    # Don't auto-correct in production
+
+    syncOptions:
+      - CreateNamespace=true
+      - PruneLast=true
+      - ApplyOutOfSyncOnly=true
+      - ServerSideApply=true
+
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+
+  revisionHistoryLimit: 20  # Keep more history for production
+
+# Made with Bob

@@ -17,32 +17,32 @@ graph TB
             AUDIT[Audit Logging]
             ADMISSION[Admission Controllers]
         end
-        
+
         subgraph "Network Security"
             NP[Network Policies]
             INGRESS[Ingress Security]
             TLS[TLS/mTLS]
         end
-        
+
         subgraph "Pod Security"
             PSS[Pod Security Standards]
             SC[Security Contexts]
             SA[Service Accounts]
         end
-        
+
         subgraph "Data Security"
             SECRETS[Secrets Management]
             ENCRYPTION[Encryption at Rest]
             SEALED[Sealed Secrets]
         end
-        
+
         subgraph "Image Security"
             SCAN[Image Scanning]
             REGISTRY[Private Registry]
             POLICY[Image Policies]
         end
     end
-    
+
     API --> RBAC
     RBAC --> SA
     SA --> PSS
@@ -69,6 +69,7 @@ graph TB
 ### 1.1 Understanding RBAC Components
 
 **Key Resources:**
+
 - **ServiceAccount**: Identity for pods
 - **Role**: Permissions within a namespace
 - **ClusterRole**: Cluster-wide permissions
@@ -129,13 +130,13 @@ rules:
   - apiGroups: [""]
     resources: ["configmaps"]
     verbs: ["get", "list", "watch"]
-  
+
   # Allow reading Secrets (specific ones only)
   - apiGroups: [""]
     resources: ["secrets"]
     resourceNames: ["demo-app-secrets"]
     verbs: ["get"]
-  
+
   # Allow reading own pod info
   - apiGroups: [""]
     resources: ["pods"]
@@ -152,17 +153,17 @@ rules:
   - apiGroups: ["apps"]
     resources: ["deployments", "replicasets"]
     verbs: ["*"]
-  
+
   # Manage services
   - apiGroups: [""]
     resources: ["services"]
     verbs: ["*"]
-  
+
   # Manage ConfigMaps and Secrets
   - apiGroups: [""]
     resources: ["configmaps", "secrets"]
     verbs: ["create", "update", "patch", "delete", "get", "list"]
-  
+
   # Read pods
   - apiGroups: [""]
     resources: ["pods", "pods/log"]
@@ -183,13 +184,13 @@ rules:
       - endpoints
       - pods
     verbs: ["get", "list", "watch"]
-  
+
   # Read non-resource URLs
   - nonResourceURLs:
       - /metrics
       - /metrics/cadvisor
     verbs: ["get"]
-  
+
   # Read config
   - apiGroups: [""]
     resources: ["configmaps"]
@@ -339,7 +340,7 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
-    
+
     # Allow from monitoring namespace
     - from:
         - namespaceSelector:
@@ -370,14 +371,14 @@ spec:
       ports:
         - protocol: UDP
           port: 53
-    
+
     # Allow HTTPS to external services
     - to:
         - namespaceSelector: {}
       ports:
         - protocol: TCP
           port: 443
-    
+
     # Allow to Kubernetes API
     - to:
         - namespaceSelector: {}
@@ -412,7 +413,7 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
-    
+
     # Allow from agents
     - from:
         - podSelector:
@@ -421,12 +422,12 @@ spec:
       ports:
         - protocol: TCP
           port: 50000
-  
+
   egress:
     # Allow all egress (Jenkins needs to access many services)
     - to:
         - namespaceSelector: {}
-    
+
     # Allow DNS
     - to:
         - namespaceSelector:
@@ -504,7 +505,7 @@ spec:
   # Use specific service account
   serviceAccountName: demo-app
   automountServiceAccountToken: true
-  
+
   # Security context for pod
   securityContext:
     runAsNonRoot: true
@@ -513,11 +514,11 @@ spec:
     fsGroup: 65534
     seccompProfile:
       type: RuntimeDefault
-  
+
   containers:
     - name: app
       image: your-username/demo-app:latest
-      
+
       # Security context for container
       securityContext:
         allowPrivilegeEscalation: false
@@ -529,7 +530,7 @@ spec:
             - ALL
           add:
             - NET_BIND_SERVICE  # Only if needed
-      
+
       # Resource limits
       resources:
         requests:
@@ -538,14 +539,14 @@ spec:
         limits:
           cpu: 500m
           memory: 512Mi
-      
+
       # Volume mounts for writable directories
       volumeMounts:
         - name: tmp
           mountPath: /tmp
         - name: cache
           mountPath: /app/cache
-  
+
   volumes:
     - name: tmp
       emptyDir: {}
@@ -586,7 +587,7 @@ securityContext:
 ```bash
 # Create generic secret
 kubectl create secret generic demo-app-secrets \
-  --from-literal=database-password='super-secret' \
+  --from-literal=database-password='' \
   --from-literal=api-key='api-key-value' \
   -n demo-app
 
@@ -616,7 +617,7 @@ spec:
   containers:
     - name: app
       image: your-app
-      
+
       # Environment variables from secret
       env:
         - name: DATABASE_PASSWORD
@@ -624,13 +625,13 @@ spec:
             secretKeyRef:
               name: demo-app-secrets
               key: database-password
-      
+
       # Mount secret as volume
       volumeMounts:
         - name: secret-volume
           mountPath: /etc/secrets
           readOnly: true
-  
+
   volumes:
     - name: secret-volume
       secret:
@@ -747,7 +748,7 @@ spec:
     - target: admission.k8s.gatekeeper.sh
       rego: |
         package k8sallowedrepos
-        
+
         violation[{"msg": msg}] {
           container := input.review.object.spec.containers[_]
           not startswith(container.image, input.parameters.repos[_])
@@ -899,20 +900,20 @@ rules:
   - level: Metadata
     omitStages:
       - RequestReceived
-  
+
   # Log pod changes at Request level
   - level: Request
     resources:
       - group: ""
         resources: ["pods"]
     verbs: ["create", "update", "patch", "delete"]
-  
+
   # Log secret access
   - level: Metadata
     resources:
       - group: ""
         resources: ["secrets"]
-  
+
   # Don't log read-only requests
   - level: None
     verbs: ["get", "list", "watch"]
@@ -1157,6 +1158,7 @@ kubectl get events -A --sort-by='.lastTimestamp'
 ## 13. Next Steps
 
 Now that security is configured, proceed to:
+
 - **[08-additional-tools.md](./08-additional-tools.md)** - Install and configure additional Kubernetes tools
 
 ---

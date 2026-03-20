@@ -14,32 +14,32 @@ graph TB
         HELM[Helm]
         KUSTOMIZE[Kustomize]
     end
-    
+
     subgraph "CLI Tools"
         KUBECTX[kubectx/kubens]
         K9S[K9s]
         STERN[Stern]
         KUBETAIL[Kubetail]
     end
-    
+
     subgraph "Development"
         SKAFFOLD[Skaffold]
         TILT[Tilt]
         TELEPRESENCE[Telepresence]
     end
-    
+
     subgraph "Security"
         SEALED[Sealed Secrets]
         VAULT[Vault]
         KUBESEC[Kubesec]
     end
-    
+
     subgraph "Observability"
         LENS[Lens IDE]
         OCTANT[Octant]
         KUBESHARK[Kubeshark]
     end
-    
+
     subgraph "Validation"
         KUBEVAL[Kubeval]
         KUBECONFORM[Kubeconform]
@@ -671,6 +671,7 @@ open -a Lens
 ### 7.3 Lens Extensions
 
 Popular extensions:
+
 - **@alebcay/openlens-node-pod-menu**: Enhanced node/pod menus
 - **@nevalla/kube-resource-map**: Resource relationship visualization
 - **@lens-extension/metrics-cluster-feature**: Enhanced metrics
@@ -1010,6 +1011,7 @@ polaris audit
 ## 15. Next Steps
 
 Now that additional tools are configured, proceed to:
+
 - **[09-troubleshooting.md](./09-troubleshooting.md)** - Learn troubleshooting techniques
 
 ---

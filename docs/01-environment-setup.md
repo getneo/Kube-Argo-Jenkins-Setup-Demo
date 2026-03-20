@@ -9,6 +9,7 @@ This guide covers the installation and configuration of Minikube and essential K
 ## Prerequisites
 
 ### System Requirements
+
 - **OS**: macOS (Intel or Apple Silicon)
 - **RAM**: Minimum 8GB (16GB recommended)
 - **Disk Space**: 20GB free space
@@ -758,6 +759,7 @@ minikube start --cpus=6 --memory=12288 --disk-size=50g --driver=docker
 ## Next Steps
 
 Now that your Kubernetes cluster is set up, proceed to:
+
 - **[02-jenkins-setup.md](./02-jenkins-setup.md)** - Install and configure Jenkins for CI
 
 ---

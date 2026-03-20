@@ -14,20 +14,20 @@ graph TB
         JENKINS[Jenkins Controller]
         PVC[Persistent Volume]
         SA[Service Account]
-        
+
         subgraph "Dynamic Agents"
             AGENT1[Maven Agent Pod]
             AGENT2[Docker Agent Pod]
             AGENT3[Go Agent Pod]
         end
     end
-    
+
     subgraph "External Systems"
         GIT[Git Repository]
         DOCKER[Docker Registry]
         K8S[Kubernetes API]
     end
-    
+
     JENKINS -->|Stores Data| PVC
     JENKINS -->|Uses| SA
     JENKINS -->|Spawns| AGENT1
@@ -109,7 +109,7 @@ controller:
   image: "jenkins/jenkins"
   tag: "2.440.1-lts-jdk17"
   imagePullPolicy: "IfNotPresent"
-  
+
   # Resource limits
   resources:
     requests:
@@ -118,7 +118,7 @@ controller:
     limits:
       cpu: "2000m"
       memory: "4Gi"
-  
+
   # Java options for performance
   javaOpts: >-
     -Xms2048m
@@ -129,19 +129,19 @@ controller:
     -XX:+DisableExplicitGC
     -Djava.awt.headless=true
     -Dhudson.model.DirectoryBrowserSupport.CSP="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';"
-  
+
   # Jenkins URL (update with your domain or use NodePort)
   jenkinsUrl: "http://jenkins.local:8080"
   jenkinsUriPrefix: "/"
-  
+
   # Admin user configuration
   adminUser: "admin"
   # Admin password will be auto-generated and stored in secret
   # Retrieve with: kubectl get secret jenkins -n jenkins -o jsonpath='{.data.jenkins-admin-password}' | base64 -d
-  
+
   # Number of executors on controller (keep low, use agents)
   numExecutors: 0
-  
+
   # Security realm
   securityRealm: |-
     local:
@@ -151,12 +151,12 @@ controller:
       - id: "${chart-admin-username}"
         name: "Jenkins Admin"
         password: "${chart-admin-password}"
-  
+
   # Authorization strategy
   authorizationStrategy: |-
     loggedInUsersCanDoAnything:
       allowAnonymousRead: false
-  
+
   # Install plugins
   installPlugins:
     # Essential plugins
@@ -164,50 +164,50 @@ controller:
     - workflow-aggregator:596.v8c21c963d92d
     - git:5.2.0
     - configuration-as-code:1670.v564dc8b_982d0
-    
+
     # SCM plugins
     - github:1.37.3.1
     - github-branch-source:1728.v859147241f49
     - gitlab-plugin:1.7.15
     - bitbucket:223.vd12f2bca5430
-    
+
     # Build tools
     - docker-workflow:572.v950f58993843
     - docker-plugin:1.5
     - pipeline-stage-view:2.33
-    
+
     # Credentials
     - credentials-binding:631.v861e8e2d4d7a_
     - plain-credentials:143.v1b_df8b_d3b_e48
     - ssh-credentials:305.v8f4381501156
-    
+
     # Notifications
     - slack:664.vc9a_90f8b_c24a_
     - email-ext:2.96
     - mailer:463.vedf8358e006b_
-    
+
     # Monitoring
     - prometheus:2.2.3
     - metrics:4.2.13-420.vea_2f17932dd6
-    
+
     # Security
     - matrix-auth:3.2.1
     - role-strategy:669.v5b_205b_a_67d50
-    
+
     # Utilities
     - timestamper:1.25
     - ws-cleanup:0.45
     - build-timeout:1.31
     - ansicolor:1.0.2
     - pipeline-utility-steps:2.16.0
-  
+
   # Additional plugins (optional)
   additionalPlugins:
     - blueocean:1.27.9
     - kubernetes-cli:1.12.1
     - job-dsl:1.84
     - pipeline-github-lib:38.v445716ea_edda_
-  
+
   # Jenkins Configuration as Code (JCasC)
   JCasC:
     defaultConfig: true
@@ -217,10 +217,10 @@ controller:
           systemMessage: |
             Welcome to Jenkins on Kubernetes!
             This Jenkins instance is configured using Configuration as Code.
-            
+
             Environment: Development
             Cluster: Minikube Local
-      
+
       kubernetes-cloud: |
         jenkins:
           clouds:
@@ -235,7 +235,7 @@ controller:
                 retentionTimeout: 5
                 connectTimeout: 10
                 readTimeout: 20
-                
+
                 templates:
                   - name: "jenkins-agent"
                     namespace: "jenkins"
@@ -251,12 +251,12 @@ controller:
                         resourceRequestMemory: "512Mi"
                         resourceLimitCpu: "1000m"
                         resourceLimitMemory: "1Gi"
-                    
+
                     volumes:
                       - emptyDirVolume:
                           memory: false
                           mountPath: "/tmp"
-                    
+
                     yaml: |
                       apiVersion: v1
                       kind: Pod
@@ -264,7 +264,7 @@ controller:
                         securityContext:
                           runAsUser: 1000
                           fsGroup: 1000
-                  
+
                   - name: "docker-agent"
                     namespace: "jenkins"
                     label: "docker"
@@ -290,7 +290,7 @@ controller:
                         resourceRequestMemory: "256Mi"
                         resourceLimitCpu: "500m"
                         resourceLimitMemory: "512Mi"
-                  
+
                   - name: "go-agent"
                     namespace: "jenkins"
                     label: "golang"
@@ -311,7 +311,7 @@ controller:
                         alwaysPullImage: false
                         workingDir: "/home/jenkins/agent"
                         ttyEnabled: true
-      
+
       security-settings: |
         jenkins:
           securityRealm:
@@ -320,14 +320,14 @@ controller:
           authorizationStrategy:
             loggedInUsersCanDoAnything:
               allowAnonymousRead: false
-          
+
           remotingSecurity:
             enabled: true
-          
+
           crumbIssuer:
             standard:
               excludeClientIPFromCrumb: false
-      
+
       global-libraries: |
         unclassified:
           globalLibraries:
@@ -341,7 +341,7 @@ controller:
                     scm:
                       git:
                         remote: "https://github.com/your-org/jenkins-shared-library.git"
-  
+
   # Ingress configuration
   ingress:
     enabled: true
@@ -354,15 +354,15 @@ controller:
     hostName: jenkins.local
     path: /
     pathType: Prefix
-  
+
   # Service configuration
   serviceType: ClusterIP
   servicePort: 8080
   targetPort: 8080
-  
+
   # Agent listener service
   agentListenerServiceType: ClusterIP
-  
+
   # Health probes
   healthProbes: true
   healthProbesLivenessTimeout: 5
@@ -373,7 +373,7 @@ controller:
   healthProbeReadinessFailureThreshold: 3
   healthProbeLivenessInitialDelay: 90
   healthProbeReadinessInitialDelay: 60
-  
+
   # Prometheus monitoring
   prometheus:
     enabled: true
@@ -503,6 +503,7 @@ echo "<MINIKUBE_IP> jenkins.local" | sudo tee -a /etc/hosts
 ### 3.1 Initial Setup Wizard
 
 Since we're using JCasC, the setup wizard is bypassed. Jenkins is pre-configured with:
+
 - Admin user created
 - Plugins installed
 - Kubernetes cloud configured
@@ -528,7 +529,7 @@ pipeline {
             defaultContainer 'jnlp'
         }
     }
-    
+
     stages {
         stage('Test') {
             steps {
@@ -572,37 +573,37 @@ rules:
   - apiGroups: [""]
     resources: ["pods/log"]
     verbs: ["get", "list", "watch"]
-  
+
   # Secrets (for credentials)
   - apiGroups: [""]
     resources: ["secrets"]
     verbs: ["get", "list", "watch"]
-  
+
   # ConfigMaps
   - apiGroups: [""]
     resources: ["configmaps"]
     verbs: ["get", "list", "watch"]
-  
+
   # Services
   - apiGroups: [""]
     resources: ["services"]
     verbs: ["get", "list", "watch"]
-  
+
   # Deployments (for CD)
   - apiGroups: ["apps"]
     resources: ["deployments"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  
+
   # ReplicaSets
   - apiGroups: ["apps"]
     resources: ["replicasets"]
     verbs: ["get", "list", "watch"]
-  
+
   # StatefulSets
   - apiGroups: ["apps"]
     resources: ["statefulsets"]
     verbs: ["get", "list", "watch"]
-  
+
   # Namespaces
   - apiGroups: [""]
     resources: ["namespaces"]
@@ -882,7 +883,7 @@ Already enabled via JCasC. Verify in **Manage Jenkins** → **Configure Global S
 jenkins:
   remotingSecurity:
     enabled: true
-  
+
   agentProtocols:
     - "JNLP4-connect"
     - "Ping"
@@ -1138,6 +1139,7 @@ echo -e "\n✅ Verification complete!"
 ## Next Steps
 
 Now that Jenkins is set up, proceed to:
+
 - **[03-argocd-setup.md](./03-argocd-setup.md)** - Install and configure ArgoCD for CD
 
 ---

@@ -38,6 +38,7 @@ graph TB
 ### 1.1 Pod Not Starting
 
 **Symptoms:**
+
 - Pod stuck in `Pending`, `ContainerCreating`, or `CrashLoopBackOff`
 
 **Diagnosis:**
@@ -791,6 +792,7 @@ kubectl cp ./local-file <pod-name>:/path/to/file -n <namespace>
 ## 12. Common Error Messages
 
 ### Error: CrashLoopBackOff
+
 ```bash
 # Check logs
 kubectl logs <pod-name> -n <namespace> --previous
@@ -803,6 +805,7 @@ kubectl logs <pod-name> -n <namespace> --previous
 ```
 
 ### Error: ImagePullBackOff
+
 ```bash
 # Check image name
 # Verify registry access
@@ -811,6 +814,7 @@ kubectl logs <pod-name> -n <namespace> --previous
 ```
 
 ### Error: Pending
+
 ```bash
 # Check node resources
 # Check PVC status
@@ -819,6 +823,7 @@ kubectl logs <pod-name> -n <namespace> --previous
 ```
 
 ### Error: OOMKilled
+
 ```bash
 # Increase memory limits
 # Check for memory leaks
@@ -826,6 +831,7 @@ kubectl logs <pod-name> -n <namespace> --previous
 ```
 
 ### Error: Error: ErrImagePull
+
 ```bash
 # Verify image name
 # Check registry credentials
@@ -837,6 +843,7 @@ kubectl logs <pod-name> -n <namespace> --previous
 ## 13. Troubleshooting Checklist
 
 ### Pod Issues
+
 - [ ] Check pod status and events
 - [ ] Review pod logs
 - [ ] Verify image exists
@@ -846,6 +853,7 @@ kubectl logs <pod-name> -n <namespace> --previous
 - [ ] Check network connectivity
 
 ### Service Issues
+
 - [ ] Verify service exists
 - [ ] Check endpoints
 - [ ] Verify pod labels match selector
@@ -853,6 +861,7 @@ kubectl logs <pod-name> -n <namespace> --previous
 - [ ] Check network policies
 
 ### Deployment Issues
+
 - [ ] Check rollout status
 - [ ] Review replica sets
 - [ ] Verify image
@@ -860,6 +869,7 @@ kubectl logs <pod-name> -n <namespace> --previous
 - [ ] Review deployment strategy
 
 ### Node Issues
+
 - [ ] Check node status
 - [ ] Verify kubelet is running
 - [ ] Check disk space
@@ -898,6 +908,7 @@ kubectl get events -n $NAMESPACE --field-selector involvedObject.name=$POD
 ## 15. Next Steps
 
 Now that you understand troubleshooting, proceed to:
+
 - **[10-testing-validation.md](./10-testing-validation.md)** - Learn testing and validation techniques
 
 ---

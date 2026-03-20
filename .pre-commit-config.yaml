@@ -1,0 +1,169 @@
+# Pre-commit hooks configuration
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+
+# To install: pip install pre-commit
+# To setup: pre-commit install
+# To run manually: pre-commit run --all-files
+
+repos:
+  # General file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      # Prevent large files from being committed
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+        exclude: |
+          (?x)^(
+            .*\.png|
+            .*\.jpg|
+            .*\.jpeg|
+            .*\.gif|
+            .*\.pdf
+          )$
+
+      # Check for files that would conflict in case-insensitive filesystems
+      - id: check-case-conflict
+
+      # Ensure files end with a newline
+      - id: end-of-file-fixer
+        exclude: |
+          (?x)^(
+            .*\.svg|
+            .*\.png|
+            .*\.jpg
+          )$
+
+      # Remove trailing whitespace
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+
+      # Check YAML syntax
+      - id: check-yaml
+        args: ['--unsafe']  # Allow custom tags in Kubernetes YAML
+        exclude: |
+          (?x)^(
+            demo-app/helm-chart/.*\.yaml|
+            demo-app/helm-chart/.*\.yml
+          )$  # Exclude Helm templates (they have Go template syntax)
+
+      # Check JSON syntax
+      - id: check-json
+
+      # Check for merge conflicts
+      - id: check-merge-conflict
+
+      # Check for broken symlinks
+      - id: check-symlinks
+
+      # Check for AWS credentials
+      - id: detect-aws-credentials
+        args: ['--allow-missing-credentials']
+
+      # Check executables have shebangs
+      - id: check-executables-have-shebangs
+
+      # Check scripts have shebangs
+      - id: check-shebang-scripts-are-executable
+
+      # Fix mixed line endings
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+
+  # Detect secrets using detect-secrets
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args:
+          - '--baseline'
+          - '.secrets.baseline'
+          - '--exclude-files'
+          - '.*\.lock$'
+          - '--exclude-files'
+          - '.*\.sum$'
+          - '--exclude-files'
+          - 'go\.sum$'
+          - '--exclude-files'
+          - 'package-lock\.json$'
+        exclude: |
+          (?x)^(
+            .*\.lock|
+            .*\.sum|
+            go\.sum|
+            package-lock\.json|
+            .*\.baseline
+          )$
+
+  # Dockerfile linting
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint-docker
+        args: ['--ignore', 'DL3018', '--ignore', 'DL3008']
+
+  # Python code formatting (if you add Python scripts)
+  - repo: https://github.com/psf/black
+    rev: 23.12.1
+    hooks:
+      - id: black
+        language_version: python3
+
+  # Python import sorting
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: ['--profile', 'black']
+
+  # Go formatting (for demo-app)
+  - repo: https://github.com/dnephin/pre-commit-golang
+    rev: v0.5.1
+    hooks:
+      - id: go-fmt
+        files: \.go$
+      - id: go-mod-tidy
+        files: (go\.mod|go\.sum)$
+
+  # Terraform formatting (if you add Terraform)
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.86.0
+    hooks:
+      - id: terraform_fmt
+      - id: terraform_validate
+      - id: terraform_docs
+      - id: terraform_tflint
+
+  # Check for common security issues
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        name: detect-secrets - prevent new secrets
+        args:
+          - '--baseline'
+          - '.secrets.baseline'
+
+  # Git commit message linting
+  - repo: https://github.com/jorisroovers/gitlint
+    rev: v0.19.1
+    hooks:
+      - id: gitlint
+        stages: [commit-msg]
+
+# Configuration for specific hooks
+default_language_version:
+  python: python3.11
+  node: 18.0.0
+
+# Stages
+default_stages: [pre-commit, pre-push]
+
+# Fail fast - stop on first failure
+fail_fast: false
+
+# Minimum pre-commit version
+minimum_pre_commit_version: '2.20.0'
+
+# Made with Bob

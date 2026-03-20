@@ -1,0 +1,51 @@
+# Development Environment Values
+# Override default values for development environment
+
+environment: development
+replicaCount: 1
+
+image:
+  repository: demo-app
+  tag: latest
+  pullPolicy: IfNotPresent
+
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: demo-app-dev.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi
+
+autoscaling:
+  enabled: false
+
+podDisruptionBudget:
+  enabled: false
+
+configMap:
+  create: true
+  data:
+    APP_NAME: "demo-app"
+    ENVIRONMENT: "development"
+    LOG_LEVEL: "debug"
+    PORT: "8080"
+
+serviceMonitor:
+  enabled: true
+  interval: 60s
+
+networkPolicy:
+  enabled: false  # Disable for easier local development
+
+# Made with Bob

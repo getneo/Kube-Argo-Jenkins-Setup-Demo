@@ -1,0 +1,382 @@
+# CKA Repository - GitIgnore
+# Excludes sensitive information, build artifacts, and temporary files
+
+# ============================================
+# SENSITIVE INFORMATION - NEVER COMMIT
+# ============================================
+
+# Secrets and credentials
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.cer
+*.der
+*-key.yaml
+*-secret.yaml
+secrets/
+.secrets/
+credentials/
+.credentials/
+
+# Environment files with secrets
+.env
+.env.local
+.env.*.local
+*.env
+.envrc
+
+# Kubernetes secrets (if accidentally created locally)
+*-sealed-secret.yaml
+*-external-secret.yaml
+
+# Password files
+passwords.txt
+*.password
+.password
+credentials.txt
+auth.txt
+
+# SSH keys
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+*.ppk
+
+# GPG keys
+*.gpg
+*.asc
+secring.*
+
+# Cloud provider credentials
+.aws/credentials
+.azure/credentials
+.gcloud/credentials
+gcloud-service-key.json
+service-account.json
+*-service-account.json
+
+# Terraform state files (may contain secrets)
+*.tfstate
+*.tfstate.*
+*.tfvars
+.terraform/
+
+# Ansible vault files
+vault.yml
+vault.yaml
+*-vault.yml
+*-vault.yaml
+
+# Docker credentials
+.docker/config.json
+
+# Helm secrets
+secrets.yaml
+*-secrets.yaml
+
+# ============================================
+# BUILD ARTIFACTS & BINARIES
+# ============================================
+
+# Go build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+/bin/
+/dist/
+/build/
+vendor/
+
+# Docker build cache
+.dockerignore.bak
+
+# Helm packages
+*.tgz
+charts/*.tgz
+
+# ============================================
+# TEMPORARY & CACHE FILES
+# ============================================
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Editor and IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.bak
+*.tmp
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]sw[a-p]
+
+# Emacs
+\#*\#
+.\#*
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# ============================================
+# LOGS & DEBUGGING
+# ============================================
+
+# Log files
+*.log
+logs/
+*.log.*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Debug files
+debug/
+*.debug
+pprof/
+
+# ============================================
+# KUBERNETES & CLOUD
+# ============================================
+
+# Kubeconfig files (may contain tokens)
+kubeconfig
+kubeconfig.*
+*.kubeconfig
+.kube/config.bak
+
+# Minikube
+.minikube/
+
+# Kind
+.kind/
+
+# Kubectl cache
+.kubectl/
+
+# Helm cache
+.helm/
+.cache/helm/
+
+# ArgoCD local config
+.argocd/
+
+# ============================================
+# LANGUAGE SPECIFIC
+# ============================================
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+.npm
+.yarn
+.pnp.*
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+target/
+.gradle/
+build/
+
+# Ruby
+*.gem
+.bundle/
+vendor/bundle/
+
+# ============================================
+# TESTING & COVERAGE
+# ============================================
+
+# Test coverage
+coverage/
+.coverage
+*.cover
+.hypothesis/
+.pytest_cache/
+htmlcov/
+.tox/
+.nox/
+
+# ============================================
+# DOCUMENTATION BUILD
+# ============================================
+
+# Generated documentation
+_site/
+.sass-cache/
+.jekyll-cache/
+.jekyll-metadata
+docs/_build/
+site/
+
+# ============================================
+# PACKAGE MANAGERS
+# ============================================
+
+# Dependency directories
+jspm_packages/
+bower_components/
+
+# ============================================
+# DATABASES
+# ============================================
+
+# SQLite
+*.sqlite
+*.sqlite3
+*.db
+
+# ============================================
+# CERTIFICATES & KEYS (ADDITIONAL)
+# ============================================
+
+# SSL/TLS certificates
+*.csr
+*.srl
+ca-bundle.crt
+ca-bundle.pem
+
+# ============================================
+# BACKUP FILES
+# ============================================
+
+*.backup
+*.bak
+*.old
+*.orig
+*~
+
+# ============================================
+# COMPRESSED FILES (TEMPORARY)
+# ============================================
+
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+
+# ============================================
+# CUSTOM PROJECT SPECIFIC
+# ============================================
+
+# Local development overrides
+docker-compose.override.yml
+values-local.yaml
+*-local.yaml
+
+# Temporary test files
+test-output/
+tmp/
+temp/
+
+# Generated manifests (if using kustomize build output)
+generated/
+
+# Local scripts that might contain secrets
+local-*.sh
+private-*.sh
+
+# ============================================
+# ALLOW SPECIFIC FILES
+# ============================================
+
+# Allow specific example files
+!example.env
+!.env.example
+!secrets.example.yaml
+!credentials.example.yaml
+
+# Allow documentation
+!README.md
+!CONTRIBUTING.md
+!LICENSE
+
+# Allow CI/CD configuration
+!.github/
+!.gitlab-ci.yml
+!Jenkinsfile
+
+# ============================================
+# NOTES
+# ============================================
+
+# This .gitignore is designed for a Kubernetes/DevOps repository
+# It excludes:
+# 1. All sensitive information (secrets, credentials, keys)
+# 2. Build artifacts and binaries
+# 3. Temporary and cache files
+# 4. IDE and editor specific files
+# 5. Log files and debugging output
+# 6. Language-specific build artifacts
+# 7. Test coverage reports
+# 8. Backup files
+#
+# IMPORTANT: Always review files before committing
+# Use 'git status' to verify what will be committed
+# Use 'git add -p' for interactive staging
+# Consider using git-secrets or similar tools to prevent accidental commits

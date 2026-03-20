@@ -1,0 +1,21 @@
+apiVersion: v2
+name: demo-app
+description: A production-ready demo application with security, observability, and scalability best practices
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - demo
+  - golang
+  - microservice
+  - prometheus
+  - kubernetes
+maintainers:
+  - name: SRE Team
+    email: sre@example.com
+home: https://github.com/example/demo-app
+sources:
+  - https://github.com/example/demo-app
+icon: https://example.com/icon.png
+
+# Made with Bob

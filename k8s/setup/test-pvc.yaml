@@ -1,0 +1,17 @@
+# Test PersistentVolumeClaim
+# This is used to verify that storage provisioning is working correctly
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: test-pvc
+  namespace: demo-app
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: standard
+
+# Made with Bob

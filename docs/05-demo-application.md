@@ -18,7 +18,7 @@ graph TB
         LOGGER[Structured Logger]
         HEALTH[Health Checker]
     end
-    
+
     subgraph "Endpoints"
         ROOT[/ - Home]
         HEALTH_EP[/health - Health Check]
@@ -27,26 +27,26 @@ graph TB
         METRICS_EP[/metrics - Prometheus]
         API[/api/* - API Routes]
     end
-    
+
     subgraph "External Systems"
         PROM[Prometheus]
         K8S[Kubernetes]
         LOGS[Log Aggregator]
     end
-    
+
     MAIN --> ROUTER
     ROUTER --> HANDLERS
     HANDLERS --> METRICS
     HANDLERS --> LOGGER
     HANDLERS --> HEALTH
-    
+
     ROUTER --> ROOT
     ROUTER --> HEALTH_EP
     ROUTER --> READY
     ROUTER --> LIVE
     ROUTER --> METRICS_EP
     ROUTER --> API
-    
+
     METRICS_EP --> PROM
     HEALTH_EP --> K8S
     READY --> K8S
@@ -120,285 +120,285 @@ go mod init github.com/your-username/demo-app
 package main
 
 import (
-	"context"
-	"fmt"
-	"log"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
+ "context"
+ "fmt"
+ "log"
+ "net/http"
+ "os"
+ "os/signal"
+ "syscall"
+ "time"
 
-	"github.com/gorilla/mux"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/sirupsen/logrus"
+ "github.com/gorilla/mux"
+ "github.com/prometheus/client_golang/prometheus"
+ "github.com/prometheus/client_golang/prometheus/promhttp"
+ "github.com/sirupsen/logrus"
 )
 
 var (
-	// Application version
-	Version = "1.0.0"
-	
-	// Logger
-	logger = logrus.New()
-	
-	// Metrics
-	httpRequestsTotal = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "http_requests_total",
-			Help: "Total number of HTTP requests",
-		},
-		[]string{"method", "endpoint", "status"},
-	)
-	
-	httpRequestDuration = prometheus.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Name:    "http_request_duration_seconds",
-			Help:    "HTTP request duration in seconds",
-			Buckets: prometheus.DefBuckets,
-		},
-		[]string{"method", "endpoint"},
-	)
-	
-	httpRequestsInFlight = prometheus.NewGauge(
-		prometheus.GaugeOpts{
-			Name: "http_requests_in_flight",
-			Help: "Current number of HTTP requests being served",
-		},
-	)
+ // Application version
+ Version = "1.0.0"
+
+ // Logger
+ logger = logrus.New()
+
+ // Metrics
+ httpRequestsTotal = prometheus.NewCounterVec(
+  prometheus.CounterOpts{
+   Name: "http_requests_total",
+   Help: "Total number of HTTP requests",
+  },
+  []string{"method", "endpoint", "status"},
+ )
+
+ httpRequestDuration = prometheus.NewHistogramVec(
+  prometheus.HistogramOpts{
+   Name:    "http_request_duration_seconds",
+   Help:    "HTTP request duration in seconds",
+   Buckets: prometheus.DefBuckets,
+  },
+  []string{"method", "endpoint"},
+ )
+
+ httpRequestsInFlight = prometheus.NewGauge(
+  prometheus.GaugeOpts{
+   Name: "http_requests_in_flight",
+   Help: "Current number of HTTP requests being served",
+  },
+ )
 )
 
 func init() {
-	// Configure logger
-	logger.SetFormatter(&logrus.JSONFormatter{})
-	logger.SetOutput(os.Stdout)
-	logger.SetLevel(logrus.InfoLevel)
-	
-	// Register metrics
-	prometheus.MustRegister(httpRequestsTotal)
-	prometheus.MustRegister(httpRequestDuration)
-	prometheus.MustRegister(httpRequestsInFlight)
+ // Configure logger
+ logger.SetFormatter(&logrus.JSONFormatter{})
+ logger.SetOutput(os.Stdout)
+ logger.SetLevel(logrus.InfoLevel)
+
+ // Register metrics
+ prometheus.MustRegister(httpRequestsTotal)
+ prometheus.MustRegister(httpRequestDuration)
+ prometheus.MustRegister(httpRequestsInFlight)
 }
 
 func main() {
-	// Get configuration from environment
-	port := getEnv("PORT", "8080")
-	
-	logger.WithFields(logrus.Fields{
-		"version": Version,
-		"port":    port,
-	}).Info("Starting application")
-	
-	// Create router
-	router := mux.NewRouter()
-	
-	// Apply middleware
-	router.Use(loggingMiddleware)
-	router.Use(metricsMiddleware)
-	router.Use(recoveryMiddleware)
-	
-	// Register routes
-	router.HandleFunc("/", homeHandler).Methods("GET")
-	router.HandleFunc("/health", healthHandler).Methods("GET")
-	router.HandleFunc("/ready", readinessHandler).Methods("GET")
-	router.HandleFunc("/live", livenessHandler).Methods("GET")
-	router.HandleFunc("/metrics", promhttp.Handler().ServeHTTP).Methods("GET")
-	
-	// API routes
-	apiRouter := router.PathPrefix("/api/v1").Subrouter()
-	apiRouter.HandleFunc("/info", infoHandler).Methods("GET")
-	apiRouter.HandleFunc("/echo", echoHandler).Methods("POST")
-	
-	// Create server
-	srv := &http.Server{
-		Addr:         ":" + port,
-		Handler:      router,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
-	}
-	
-	// Start server in goroutine
-	go func() {
-		logger.WithField("port", port).Info("Server starting")
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.WithError(err).Fatal("Server failed to start")
-		}
-	}()
-	
-	// Wait for interrupt signal
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	
-	logger.Info("Server shutting down")
-	
-	// Graceful shutdown with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	
-	if err := srv.Shutdown(ctx); err != nil {
-		logger.WithError(err).Fatal("Server forced to shutdown")
-	}
-	
-	logger.Info("Server exited")
+ // Get configuration from environment
+ port := getEnv("PORT", "8080")
+
+ logger.WithFields(logrus.Fields{
+  "version": Version,
+  "port":    port,
+ }).Info("Starting application")
+
+ // Create router
+ router := mux.NewRouter()
+
+ // Apply middleware
+ router.Use(loggingMiddleware)
+ router.Use(metricsMiddleware)
+ router.Use(recoveryMiddleware)
+
+ // Register routes
+ router.HandleFunc("/", homeHandler).Methods("GET")
+ router.HandleFunc("/health", healthHandler).Methods("GET")
+ router.HandleFunc("/ready", readinessHandler).Methods("GET")
+ router.HandleFunc("/live", livenessHandler).Methods("GET")
+ router.HandleFunc("/metrics", promhttp.Handler().ServeHTTP).Methods("GET")
+
+ // API routes
+ apiRouter := router.PathPrefix("/api/v1").Subrouter()
+ apiRouter.HandleFunc("/info", infoHandler).Methods("GET")
+ apiRouter.HandleFunc("/echo", echoHandler).Methods("POST")
+
+ // Create server
+ srv := &http.Server{
+  Addr:         ":" + port,
+  Handler:      router,
+  ReadTimeout:  15 * time.Second,
+  WriteTimeout: 15 * time.Second,
+  IdleTimeout:  60 * time.Second,
+ }
+
+ // Start server in goroutine
+ go func() {
+  logger.WithField("port", port).Info("Server starting")
+  if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+   logger.WithError(err).Fatal("Server failed to start")
+  }
+ }()
+
+ // Wait for interrupt signal
+ quit := make(chan os.Signal, 1)
+ signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+ <-quit
+
+ logger.Info("Server shutting down")
+
+ // Graceful shutdown with timeout
+ ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+ defer cancel()
+
+ if err := srv.Shutdown(ctx); err != nil {
+  logger.WithError(err).Fatal("Server forced to shutdown")
+ }
+
+ logger.Info("Server exited")
 }
 
 // Handlers
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html")
-	fmt.Fprintf(w, `
-		<!DOCTYPE html>
-		<html>
-		<head>
-			<title>Demo App</title>
-			<style>
-				body { font-family: Arial, sans-serif; margin: 40px; }
-				h1 { color: #333; }
-				.info { background: #f0f0f0; padding: 20px; border-radius: 5px; }
-			</style>
-		</head>
-		<body>
-			<h1>🚀 Demo Application</h1>
-			<div class="info">
-				<p><strong>Version:</strong> %s</p>
-				<p><strong>Status:</strong> Running</p>
-				<p><strong>Endpoints:</strong></p>
-				<ul>
-					<li><a href="/health">/health</a> - Health check</li>
-					<li><a href="/ready">/ready</a> - Readiness probe</li>
-					<li><a href="/live">/live</a> - Liveness probe</li>
-					<li><a href="/metrics">/metrics</a> - Prometheus metrics</li>
-					<li><a href="/api/v1/info">/api/v1/info</a> - Application info</li>
-				</ul>
-			</div>
-		</body>
-		</html>
-	`, Version)
+ w.Header().Set("Content-Type", "text/html")
+ fmt.Fprintf(w, `
+  <!DOCTYPE html>
+  <html>
+  <head>
+   <title>Demo App</title>
+   <style>
+    body { font-family: Arial, sans-serif; margin: 40px; }
+    h1 { color: #333; }
+    .info { background: #f0f0f0; padding: 20px; border-radius: 5px; }
+   </style>
+  </head>
+  <body>
+   <h1>🚀 Demo Application</h1>
+   <div class="info">
+    <p><strong>Version:</strong> %s</p>
+    <p><strong>Status:</strong> Running</p>
+    <p><strong>Endpoints:</strong></p>
+    <ul>
+     <li><a href="/health">/health</a> - Health check</li>
+     <li><a href="/ready">/ready</a> - Readiness probe</li>
+     <li><a href="/live">/live</a> - Liveness probe</li>
+     <li><a href="/metrics">/metrics</a> - Prometheus metrics</li>
+     <li><a href="/api/v1/info">/api/v1/info</a> - Application info</li>
+    </ul>
+   </div>
+  </body>
+  </html>
+ `, Version)
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, `{"status":"healthy","version":"%s"}`, Version)
+ w.Header().Set("Content-Type", "application/json")
+ w.WriteHeader(http.StatusOK)
+ fmt.Fprintf(w, `{"status":"healthy","version":"%s"}`, Version)
 }
 
 func readinessHandler(w http.ResponseWriter, r *http.Request) {
-	// Check if application is ready to serve traffic
-	// Add checks for database, cache, etc.
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, `{"status":"ready"}`)
+ // Check if application is ready to serve traffic
+ // Add checks for database, cache, etc.
+ w.Header().Set("Content-Type", "application/json")
+ w.WriteHeader(http.StatusOK)
+ fmt.Fprint(w, `{"status":"ready"}`)
 }
 
 func livenessHandler(w http.ResponseWriter, r *http.Request) {
-	// Check if application is alive
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, `{"status":"alive"}`)
+ // Check if application is alive
+ w.Header().Set("Content-Type", "application/json")
+ w.WriteHeader(http.StatusOK)
+ fmt.Fprint(w, `{"status":"alive"}`)
 }
 
 func infoHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	hostname, _ := os.Hostname()
-	fmt.Fprintf(w, `{
-		"version": "%s",
-		"hostname": "%s",
-		"timestamp": "%s"
-	}`, Version, hostname, time.Now().Format(time.RFC3339))
+ w.Header().Set("Content-Type", "application/json")
+ hostname, _ := os.Hostname()
+ fmt.Fprintf(w, `{
+  "version": "%s",
+  "hostname": "%s",
+  "timestamp": "%s"
+ }`, Version, hostname, time.Now().Format(time.RFC3339))
 }
 
 func echoHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	// Echo back the request body
-	fmt.Fprint(w, `{"message":"echo endpoint"}`)
+ w.Header().Set("Content-Type", "application/json")
+ // Echo back the request body
+ fmt.Fprint(w, `{"message":"echo endpoint"}`)
 }
 
 // Middleware
 
 func loggingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-		
-		// Create response writer wrapper to capture status code
-		wrapped := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
-		
-		next.ServeHTTP(wrapped, r)
-		
-		duration := time.Since(start)
-		
-		logger.WithFields(logrus.Fields{
-			"method":     r.Method,
-			"path":       r.URL.Path,
-			"status":     wrapped.statusCode,
-			"duration":   duration.Milliseconds(),
-			"remote_ip":  r.RemoteAddr,
-			"user_agent": r.UserAgent(),
-		}).Info("HTTP request")
-	})
+ return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+  start := time.Now()
+
+  // Create response writer wrapper to capture status code
+  wrapped := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+
+  next.ServeHTTP(wrapped, r)
+
+  duration := time.Since(start)
+
+  logger.WithFields(logrus.Fields{
+   "method":     r.Method,
+   "path":       r.URL.Path,
+   "status":     wrapped.statusCode,
+   "duration":   duration.Milliseconds(),
+   "remote_ip":  r.RemoteAddr,
+   "user_agent": r.UserAgent(),
+  }).Info("HTTP request")
+ })
 }
 
 func metricsMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-		httpRequestsInFlight.Inc()
-		defer httpRequestsInFlight.Dec()
-		
-		wrapped := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
-		
-		next.ServeHTTP(wrapped, r)
-		
-		duration := time.Since(start).Seconds()
-		
-		httpRequestsTotal.WithLabelValues(
-			r.Method,
-			r.URL.Path,
-			fmt.Sprintf("%d", wrapped.statusCode),
-		).Inc()
-		
-		httpRequestDuration.WithLabelValues(
-			r.Method,
-			r.URL.Path,
-		).Observe(duration)
-	})
+ return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+  start := time.Now()
+  httpRequestsInFlight.Inc()
+  defer httpRequestsInFlight.Dec()
+
+  wrapped := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+
+  next.ServeHTTP(wrapped, r)
+
+  duration := time.Since(start).Seconds()
+
+  httpRequestsTotal.WithLabelValues(
+   r.Method,
+   r.URL.Path,
+   fmt.Sprintf("%d", wrapped.statusCode),
+  ).Inc()
+
+  httpRequestDuration.WithLabelValues(
+   r.Method,
+   r.URL.Path,
+  ).Observe(duration)
+ })
 }
 
 func recoveryMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer func() {
-			if err := recover(); err != nil {
-				logger.WithFields(logrus.Fields{
-					"error": err,
-					"path":  r.URL.Path,
-				}).Error("Panic recovered")
-				
-				w.WriteHeader(http.StatusInternalServerError)
-				fmt.Fprint(w, `{"error":"Internal server error"}`)
-			}
-		}()
-		
-		next.ServeHTTP(w, r)
-	})
+ return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+  defer func() {
+   if err := recover(); err != nil {
+    logger.WithFields(logrus.Fields{
+     "error": err,
+     "path":  r.URL.Path,
+    }).Error("Panic recovered")
+
+    w.WriteHeader(http.StatusInternalServerError)
+    fmt.Fprint(w, `{"error":"Internal server error"}`)
+   }
+  }()
+
+  next.ServeHTTP(w, r)
+ })
 }
 
 // Helper types and functions
 
 type responseWriter struct {
-	http.ResponseWriter
-	statusCode int
+ http.ResponseWriter
+ statusCode int
 }
 
 func (rw *responseWriter) WriteHeader(code int) {
-	rw.statusCode = code
-	rw.ResponseWriter.WriteHeader(code)
+ rw.statusCode = code
+ rw.ResponseWriter.WriteHeader(code)
 }
 
 func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
+ if value := os.Getenv(key); value != "" {
+  return value
+ }
+ return defaultValue
 }
 ```
 
@@ -669,102 +669,102 @@ NC := \033[0m # No Color
 
 .PHONY: help
 help: ## Show this help message
-	@echo "$(BLUE)Available targets:$(NC)"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-20s$(NC) %s\n", $$1, $$2}'
+ @echo "$(BLUE)Available targets:$(NC)"
+ @grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-20s$(NC) %s\n", $$1, $$2}'
 
 .PHONY: build
 build: ## Build the application
-	@echo "$(BLUE)Building application...$(NC)"
-	go build -ldflags="-X main.Version=$(VERSION)" -o $(APP_NAME) main.go
-	@echo "$(GREEN)Build complete!$(NC)"
+ @echo "$(BLUE)Building application...$(NC)"
+ go build -ldflags="-X main.Version=$(VERSION)" -o $(APP_NAME) main.go
+ @echo "$(GREEN)Build complete!$(NC)"
 
 .PHONY: test
 test: ## Run tests
-	@echo "$(BLUE)Running tests...$(NC)"
-	go test -v -race -coverprofile=coverage.out ./...
-	@echo "$(GREEN)Tests complete!$(NC)"
+ @echo "$(BLUE)Running tests...$(NC)"
+ go test -v -race -coverprofile=coverage.out ./...
+ @echo "$(GREEN)Tests complete!$(NC)"
 
 .PHONY: coverage
 coverage: test ## Generate coverage report
-	@echo "$(BLUE)Generating coverage report...$(NC)"
-	go tool cover -html=coverage.out -o coverage.html
-	@echo "$(GREEN)Coverage report: coverage.html$(NC)"
+ @echo "$(BLUE)Generating coverage report...$(NC)"
+ go tool cover -html=coverage.out -o coverage.html
+ @echo "$(GREEN)Coverage report: coverage.html$(NC)"
 
 .PHONY: lint
 lint: ## Run linter
-	@echo "$(BLUE)Running linter...$(NC)"
-	golangci-lint run ./...
-	@echo "$(GREEN)Linting complete!$(NC)"
+ @echo "$(BLUE)Running linter...$(NC)"
+ golangci-lint run ./...
+ @echo "$(GREEN)Linting complete!$(NC)"
 
 .PHONY: fmt
 fmt: ## Format code
-	@echo "$(BLUE)Formatting code...$(NC)"
-	go fmt ./...
-	@echo "$(GREEN)Formatting complete!$(NC)"
+ @echo "$(BLUE)Formatting code...$(NC)"
+ go fmt ./...
+ @echo "$(GREEN)Formatting complete!$(NC)"
 
 .PHONY: vet
 vet: ## Run go vet
-	@echo "$(BLUE)Running go vet...$(NC)"
-	go vet ./...
-	@echo "$(GREEN)Vet complete!$(NC)"
+ @echo "$(BLUE)Running go vet...$(NC)"
+ go vet ./...
+ @echo "$(GREEN)Vet complete!$(NC)"
 
 .PHONY: run
 run: ## Run the application
-	@echo "$(BLUE)Running application...$(NC)"
-	go run main.go
+ @echo "$(BLUE)Running application...$(NC)"
+ go run main.go
 
 .PHONY: docker-build
 docker-build: ## Build Docker image
-	@echo "$(BLUE)Building Docker image...$(NC)"
-	docker build -t $(APP_NAME):$(VERSION) -t $(APP_NAME):latest .
-	@echo "$(GREEN)Docker image built: $(APP_NAME):$(VERSION)$(NC)"
+ @echo "$(BLUE)Building Docker image...$(NC)"
+ docker build -t $(APP_NAME):$(VERSION) -t $(APP_NAME):latest .
+ @echo "$(GREEN)Docker image built: $(APP_NAME):$(VERSION)$(NC)"
 
 .PHONY: docker-run
 docker-run: ## Run Docker container
-	@echo "$(BLUE)Running Docker container...$(NC)"
-	docker run -d -p 8080:8080 --name $(APP_NAME) $(APP_NAME):latest
-	@echo "$(GREEN)Container running at http://localhost:8080$(NC)"
+ @echo "$(BLUE)Running Docker container...$(NC)"
+ docker run -d -p 8080:8080 --name $(APP_NAME) $(APP_NAME):latest
+ @echo "$(GREEN)Container running at http://localhost:8080$(NC)"
 
 .PHONY: docker-stop
 docker-stop: ## Stop Docker container
-	@echo "$(BLUE)Stopping Docker container...$(NC)"
-	docker stop $(APP_NAME) || true
-	docker rm $(APP_NAME) || true
-	@echo "$(GREEN)Container stopped$(NC)"
+ @echo "$(BLUE)Stopping Docker container...$(NC)"
+ docker stop $(APP_NAME) || true
+ docker rm $(APP_NAME) || true
+ @echo "$(GREEN)Container stopped$(NC)"
 
 .PHONY: docker-push
 docker-push: docker-build ## Push Docker image to registry
-	@echo "$(BLUE)Pushing Docker image...$(NC)"
-	docker tag $(APP_NAME):$(VERSION) $(DOCKER_IMAGE):$(VERSION)
-	docker tag $(APP_NAME):$(VERSION) $(DOCKER_IMAGE):latest
-	docker push $(DOCKER_IMAGE):$(VERSION)
-	docker push $(DOCKER_IMAGE):latest
-	@echo "$(GREEN)Image pushed: $(DOCKER_IMAGE):$(VERSION)$(NC)"
+ @echo "$(BLUE)Pushing Docker image...$(NC)"
+ docker tag $(APP_NAME):$(VERSION) $(DOCKER_IMAGE):$(VERSION)
+ docker tag $(APP_NAME):$(VERSION) $(DOCKER_IMAGE):latest
+ docker push $(DOCKER_IMAGE):$(VERSION)
+ docker push $(DOCKER_IMAGE):latest
+ @echo "$(GREEN)Image pushed: $(DOCKER_IMAGE):$(VERSION)$(NC)"
 
 .PHONY: clean
 clean: ## Clean build artifacts
-	@echo "$(BLUE)Cleaning...$(NC)"
-	rm -f $(APP_NAME)
-	rm -f coverage.out coverage.html
-	go clean
-	@echo "$(GREEN)Clean complete!$(NC)"
+ @echo "$(BLUE)Cleaning...$(NC)"
+ rm -f $(APP_NAME)
+ rm -f coverage.out coverage.html
+ go clean
+ @echo "$(GREEN)Clean complete!$(NC)"
 
 .PHONY: deps
 deps: ## Download dependencies
-	@echo "$(BLUE)Downloading dependencies...$(NC)"
-	go mod download
-	go mod tidy
-	@echo "$(GREEN)Dependencies downloaded!$(NC)"
+ @echo "$(BLUE)Downloading dependencies...$(NC)"
+ go mod download
+ go mod tidy
+ @echo "$(GREEN)Dependencies downloaded!$(NC)"
 
 .PHONY: security-scan
 security-scan: ## Run security scan
-	@echo "$(BLUE)Running security scan...$(NC)"
-	trivy image $(APP_NAME):latest
-	@echo "$(GREEN)Security scan complete!$(NC)"
+ @echo "$(BLUE)Running security scan...$(NC)"
+ trivy image $(APP_NAME):latest
+ @echo "$(GREEN)Security scan complete!$(NC)"
 
 .PHONY: all
 all: fmt vet lint test build ## Run all checks and build
-	@echo "$(GREEN)All tasks complete!$(NC)"
+ @echo "$(GREEN)All tasks complete!$(NC)"
 ```
 
 ---
@@ -777,89 +777,89 @@ Create `app/main_test.go`:
 package main
 
 import (
-	"net/http"
-	"net/http/httptest"
-	"testing"
+ "net/http"
+ "net/http/httptest"
+ "testing"
 )
 
 func TestHealthHandler(t *testing.T) {
-	req, err := http.NewRequest("GET", "/health", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(healthHandler)
-	
-	handler.ServeHTTP(rr, req)
-	
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
-	
-	expected := `{"status":"healthy","version":"` + Version + `"}`
-	if rr.Body.String() != expected {
-		t.Errorf("handler returned unexpected body: got %v want %v",
-			rr.Body.String(), expected)
-	}
+ req, err := http.NewRequest("GET", "/health", nil)
+ if err != nil {
+  t.Fatal(err)
+ }
+
+ rr := httptest.NewRecorder()
+ handler := http.HandlerFunc(healthHandler)
+
+ handler.ServeHTTP(rr, req)
+
+ if status := rr.Code; status != http.StatusOK {
+  t.Errorf("handler returned wrong status code: got %v want %v",
+   status, http.StatusOK)
+ }
+
+ expected := `{"status":"healthy","version":"` + Version + `"}`
+ if rr.Body.String() != expected {
+  t.Errorf("handler returned unexpected body: got %v want %v",
+   rr.Body.String(), expected)
+ }
 }
 
 func TestReadinessHandler(t *testing.T) {
-	req, err := http.NewRequest("GET", "/ready", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(readinessHandler)
-	
-	handler.ServeHTTP(rr, req)
-	
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
+ req, err := http.NewRequest("GET", "/ready", nil)
+ if err != nil {
+  t.Fatal(err)
+ }
+
+ rr := httptest.NewRecorder()
+ handler := http.HandlerFunc(readinessHandler)
+
+ handler.ServeHTTP(rr, req)
+
+ if status := rr.Code; status != http.StatusOK {
+  t.Errorf("handler returned wrong status code: got %v want %v",
+   status, http.StatusOK)
+ }
 }
 
 func TestLivenessHandler(t *testing.T) {
-	req, err := http.NewRequest("GET", "/live", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(livenessHandler)
-	
-	handler.ServeHTTP(rr, req)
-	
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
+ req, err := http.NewRequest("GET", "/live", nil)
+ if err != nil {
+  t.Fatal(err)
+ }
+
+ rr := httptest.NewRecorder()
+ handler := http.HandlerFunc(livenessHandler)
+
+ handler.ServeHTTP(rr, req)
+
+ if status := rr.Code; status != http.StatusOK {
+  t.Errorf("handler returned wrong status code: got %v want %v",
+   status, http.StatusOK)
+ }
 }
 
 func TestHomeHandler(t *testing.T) {
-	req, err := http.NewRequest("GET", "/", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(homeHandler)
-	
-	handler.ServeHTTP(rr, req)
-	
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
-	
-	contentType := rr.Header().Get("Content-Type")
-	if contentType != "text/html" {
-		t.Errorf("handler returned wrong content type: got %v want %v",
-			contentType, "text/html")
-	}
+ req, err := http.NewRequest("GET", "/", nil)
+ if err != nil {
+  t.Fatal(err)
+ }
+
+ rr := httptest.NewRecorder()
+ handler := http.HandlerFunc(homeHandler)
+
+ handler.ServeHTTP(rr, req)
+
+ if status := rr.Code; status != http.StatusOK {
+  t.Errorf("handler returned wrong status code: got %v want %v",
+   status, http.StatusOK)
+ }
+
+ contentType := rr.Header().Get("Content-Type")
+ if contentType != "text/html" {
+  t.Errorf("handler returned wrong content type: got %v want %v",
+   contentType, "text/html")
+ }
 }
 ```
 
@@ -933,15 +933,15 @@ health:
 
 ```go
 func securityHeadersMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.Header().Set("X-Frame-Options", "DENY")
-		w.Header().Set("X-XSS-Protection", "1; mode=block")
-		w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
-		w.Header().Set("Content-Security-Policy", "default-src 'self'")
-		
-		next.ServeHTTP(w, r)
-	})
+ return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+  w.Header().Set("X-Content-Type-Options", "nosniff")
+  w.Header().Set("X-Frame-Options", "DENY")
+  w.Header().Set("X-XSS-Protection", "1; mode=block")
+  w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+  w.Header().Set("Content-Security-Policy", "default-src 'self'")
+
+  next.ServeHTTP(w, r)
+ })
 }
 ```
 
@@ -953,15 +953,15 @@ func securityHeadersMiddleware(next http.Handler) http.Handler {
 
 ```go
 srv := &http.Server{
-	Addr:         ":" + port,
-	Handler:      router,
-	ReadTimeout:  15 * time.Second,
-	WriteTimeout: 15 * time.Second,
-	IdleTimeout:  60 * time.Second,
-	// Enable HTTP/2
-	TLSConfig: &tls.Config{
-		MinVersion: tls.VersionTLS12,
-	},
+ Addr:         ":" + port,
+ Handler:      router,
+ ReadTimeout:  15 * time.Second,
+ WriteTimeout: 15 * time.Second,
+ IdleTimeout:  60 * time.Second,
+ // Enable HTTP/2
+ TLSConfig: &tls.Config{
+  MinVersion: tls.VersionTLS12,
+ },
 }
 ```
 
@@ -969,12 +969,12 @@ srv := &http.Server{
 
 ```go
 func cacheMiddleware(duration time.Duration) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d", int(duration.Seconds())))
-			next.ServeHTTP(w, r)
-		})
-	}
+ return func(next http.Handler) http.Handler {
+  return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+   w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d", int(duration.Seconds())))
+   next.ServeHTTP(w, r)
+  })
+ }
 }
 ```
 
@@ -1053,6 +1053,7 @@ make all
 ## 12. Next Steps
 
 Now that the application is created, proceed to:
+
 - **[06-cicd-pipeline.md](./06-cicd-pipeline.md)** - Set up the complete CI/CD pipeline
 
 ---

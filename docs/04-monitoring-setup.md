@@ -15,13 +15,13 @@ graph TB
         ALERT[Alertmanager]
         GRAF[Grafana]
         PROM_OP[Prometheus Operator]
-        
+
         subgraph "Exporters"
             NODE_EXP[Node Exporter]
             KUBE_STATE[Kube State Metrics]
             METRICS_SRV[Metrics Server]
         end
-        
+
         PROM_OP -->|Manages| PROM
         PROM -->|Scrapes| NODE_EXP
         PROM -->|Scrapes| KUBE_STATE
@@ -29,32 +29,32 @@ graph TB
         PROM -->|Sends Alerts| ALERT
         GRAF -->|Queries| PROM
     end
-    
+
     subgraph "Application Namespaces"
         APP[Demo App]
         JENKINS[Jenkins]
         ARGOCD[ArgoCD]
     end
-    
+
     subgraph "ServiceMonitors"
         SM_APP[App ServiceMonitor]
         SM_JENKINS[Jenkins ServiceMonitor]
         SM_ARGOCD[ArgoCD ServiceMonitor]
     end
-    
+
     PROM -->|Scrapes| APP
     PROM -->|Scrapes| JENKINS
     PROM -->|Scrapes| ARGOCD
     SM_APP -->|Configures| PROM
     SM_JENKINS -->|Configures| PROM
     SM_ARGOCD -->|Configures| PROM
-    
+
     subgraph "External"
         SLACK[Slack]
         EMAIL[Email]
         PAGERDUTY[PagerDuty]
     end
-    
+
     ALERT -->|Notifications| SLACK
     ALERT -->|Notifications| EMAIL
     ALERT -->|Notifications| PAGERDUTY
@@ -134,7 +134,7 @@ global:
 # Prometheus Operator
 prometheusOperator:
   enabled: true
-  
+
   resources:
     limits:
       cpu: 200m
@@ -142,7 +142,7 @@ prometheusOperator:
     requests:
       cpu: 100m
       memory: 256Mi
-  
+
   # Admission webhooks
   admissionWebhooks:
     enabled: true
@@ -152,12 +152,12 @@ prometheusOperator:
 # Prometheus Server
 prometheus:
   enabled: true
-  
+
   prometheusSpec:
     # Retention period
     retention: 15d
     retentionSize: "10GB"
-    
+
     # Resource limits
     resources:
       requests:
@@ -166,7 +166,7 @@ prometheus:
       limits:
         cpu: 2000m
         memory: 4Gi
-    
+
     # Storage configuration
     storageSpec:
       volumeClaimTemplate:
@@ -176,43 +176,43 @@ prometheus:
           resources:
             requests:
               storage: 20Gi
-    
+
     # Service monitor selector
     serviceMonitorSelector: {}
     serviceMonitorNamespaceSelector: {}
-    
+
     # Pod monitor selector
     podMonitorSelector: {}
     podMonitorNamespaceSelector: {}
-    
+
     # Rule selector
     ruleSelector: {}
     ruleNamespaceSelector: {}
-    
+
     # Scrape interval
     scrapeInterval: 30s
     evaluationInterval: 30s
-    
+
     # External labels
     externalLabels:
       cluster: minikube-local
       environment: development
-    
+
     # Additional scrape configs
     additionalScrapeConfigs: []
-    
+
     # Replicas for HA (set to 1 for local dev)
     replicas: 1
-    
+
     # Security context
     securityContext:
       runAsNonRoot: true
       runAsUser: 1000
       fsGroup: 2000
-    
+
     # Enable admin API
     enableAdminAPI: false
-    
+
     # Remote write (optional - for long-term storage)
     # remoteWrite:
     #   - url: "http://thanos-receive:19291/api/v1/receive"
@@ -220,7 +220,7 @@ prometheus:
 # Alertmanager
 alertmanager:
   enabled: true
-  
+
   alertmanagerSpec:
     # Resource limits
     resources:
@@ -230,7 +230,7 @@ alertmanager:
       limits:
         cpu: 200m
         memory: 512Mi
-    
+
     # Storage
     storage:
       volumeClaimTemplate:
@@ -240,22 +240,22 @@ alertmanager:
           resources:
             requests:
               storage: 5Gi
-    
+
     # Replicas for HA
     replicas: 1
-    
+
     # Security context
     securityContext:
       runAsNonRoot: true
       runAsUser: 1000
       fsGroup: 2000
-  
+
   # Alertmanager configuration
   config:
     global:
       resolve_timeout: 5m
       slack_api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
-    
+
     route:
       group_by: ['alertname', 'cluster', 'service']
       group_wait: 10s
@@ -270,14 +270,14 @@ alertmanager:
         - match:
             severity: warning
           receiver: warning
-    
+
     receivers:
       - name: 'default'
         slack_configs:
           - channel: '#alerts'
             title: 'Kubernetes Alert'
             text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
-      
+
       - name: 'critical'
         slack_configs:
           - channel: '#alerts-critical'
@@ -288,8 +288,7 @@ alertmanager:
         #     from: 'alertmanager@example.com'
         #     smarthost: 'smtp.gmail.com:587'
         #     auth_username: 'alertmanager@example.com'
-        #     auth_password: 'password'
-      
+
       - name: 'warning'
         slack_configs:
           - channel: '#alerts-warning'
@@ -299,10 +298,10 @@ alertmanager:
 # Grafana
 grafana:
   enabled: true
-  
+
   # Admin credentials
   adminPassword: admin123  # Change in production!
-  
+
   # Resource limits
   resources:
     limits:
@@ -311,7 +310,7 @@ grafana:
     requests:
       cpu: 100m
       memory: 128Mi
-  
+
   # Persistence
   persistence:
     enabled: true
@@ -319,7 +318,7 @@ grafana:
     accessModes:
       - ReadWriteOnce
     size: 5Gi
-  
+
   # Ingress
   ingress:
     enabled: true
@@ -329,7 +328,7 @@ grafana:
     hosts:
       - grafana.local
     path: /
-  
+
   # Datasources
   datasources:
     datasources.yaml:
@@ -342,7 +341,7 @@ grafana:
           isDefault: true
           jsonData:
             timeInterval: 30s
-  
+
   # Dashboard providers
   dashboardProviders:
     dashboardproviders.yaml:
@@ -356,7 +355,7 @@ grafana:
           editable: true
           options:
             path: /var/lib/grafana/dashboards/default
-  
+
   # Pre-installed dashboards
   dashboards:
     default:
@@ -365,25 +364,25 @@ grafana:
         gnetId: 7249
         revision: 1
         datasource: Prometheus
-      
+
       # Node exporter
       node-exporter:
         gnetId: 1860
         revision: 27
         datasource: Prometheus
-      
+
       # Kubernetes pods
       kubernetes-pods:
         gnetId: 6417
         revision: 1
         datasource: Prometheus
-      
+
       # Kubernetes deployment
       kubernetes-deployment:
         gnetId: 8588
         revision: 1
         datasource: Prometheus
-  
+
   # Grafana configuration
   grafana.ini:
     server:
@@ -401,7 +400,7 @@ grafana:
 # Node Exporter
 nodeExporter:
   enabled: true
-  
+
   resources:
     limits:
       cpu: 200m
@@ -413,7 +412,7 @@ nodeExporter:
 # Kube State Metrics
 kubeStateMetrics:
   enabled: true
-  
+
   resources:
     limits:
       cpu: 200m
@@ -601,7 +600,7 @@ spec:
           annotations:
             summary: "High error rate detected"
             description: "{{ $labels.namespace }}/{{ $labels.service }} has error rate of {{ $value | humanizePercentage }}"
-        
+
         # High latency
         - alert: HighLatency
           expr: |
@@ -614,7 +613,7 @@ spec:
           annotations:
             summary: "High latency detected"
             description: "{{ $labels.namespace }}/{{ $labels.service }} has p95 latency of {{ $value }}s"
-        
+
         # Pod crash looping
         - alert: PodCrashLooping
           expr: |
@@ -625,7 +624,7 @@ spec:
           annotations:
             summary: "Pod is crash looping"
             description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is crash looping"
-        
+
         # Pod not ready
         - alert: PodNotReady
           expr: |
@@ -638,7 +637,7 @@ spec:
           annotations:
             summary: "Pod not ready"
             description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} has been in {{ $labels.phase }} state for more than 10 minutes"
-        
+
         # High memory usage
         - alert: HighMemoryUsage
           expr: |
@@ -653,7 +652,7 @@ spec:
           annotations:
             summary: "High memory usage"
             description: "Container {{ $labels.namespace }}/{{ $labels.pod }}/{{ $labels.container }} is using {{ $value | humanizePercentage }} of memory limit"
-        
+
         # High CPU usage
         - alert: HighCPUUsage
           expr: |
@@ -668,7 +667,7 @@ spec:
           annotations:
             summary: "High CPU usage"
             description: "Container {{ $labels.namespace }}/{{ $labels.pod }}/{{ $labels.container }} is using {{ $value | humanizePercentage }} of CPU limit"
-        
+
         # Persistent volume almost full
         - alert: PersistentVolumeAlmostFull
           expr: |
@@ -683,7 +682,7 @@ spec:
           annotations:
             summary: "Persistent volume almost full"
             description: "PVC {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} is {{ $value | humanizePercentage }} full"
-        
+
         # Deployment replica mismatch
         - alert: DeploymentReplicasMismatch
           expr: |
@@ -709,7 +708,7 @@ spec:
           annotations:
             summary: "Jenkins is down"
             description: "Jenkins has been down for more than 5 minutes"
-        
+
         # High build queue
         - alert: HighBuildQueue
           expr: jenkins_queue_size_value > 10
@@ -719,7 +718,7 @@ spec:
           annotations:
             summary: "High Jenkins build queue"
             description: "Jenkins has {{ $value }} builds in queue"
-        
+
         # Build failure rate
         - alert: HighBuildFailureRate
           expr: |
@@ -747,7 +746,7 @@ spec:
           annotations:
             summary: "ArgoCD application out of sync"
             description: "Application {{ $labels.name }} in {{ $labels.namespace }} is out of sync"
-        
+
         # ArgoCD app unhealthy
         - alert: ArgoCDAppUnhealthy
           expr: argocd_app_info{health_status!="Healthy"} == 1
@@ -1093,37 +1092,37 @@ spec:
         # Request rate
         - record: job:http_requests:rate5m
           expr: sum(rate(http_requests_total[5m])) by (job, namespace, service)
-        
+
         # Error rate
         - record: job:http_requests:error_rate5m
           expr: |
             sum(rate(http_requests_total{status=~"5.."}[5m])) by (job, namespace, service)
             /
             sum(rate(http_requests_total[5m])) by (job, namespace, service)
-        
+
         # Latency percentiles
         - record: job:http_request_duration_seconds:p50
           expr: |
             histogram_quantile(0.50,
               sum(rate(http_request_duration_seconds_bucket[5m])) by (le, job, namespace, service)
             )
-        
+
         - record: job:http_request_duration_seconds:p95
           expr: |
             histogram_quantile(0.95,
               sum(rate(http_request_duration_seconds_bucket[5m])) by (le, job, namespace, service)
             )
-        
+
         - record: job:http_request_duration_seconds:p99
           expr: |
             histogram_quantile(0.99,
               sum(rate(http_request_duration_seconds_bucket[5m])) by (le, job, namespace, service)
             )
-        
+
         # Availability
         - record: job:up:availability
           expr: avg_over_time(up[5m])
-    
+
     - name: resource.rules
       interval: 30s
       rules:
@@ -1131,17 +1130,17 @@ spec:
         - record: namespace:container_cpu_usage:sum
           expr: |
             sum(rate(container_cpu_usage_seconds_total{container!=""}[5m])) by (namespace)
-        
+
         # Memory usage by namespace
         - record: namespace:container_memory_usage:sum
           expr: |
             sum(container_memory_working_set_bytes{container!=""}) by (namespace)
-        
+
         # Network received by namespace
         - record: namespace:container_network_receive_bytes:sum
           expr: |
             sum(rate(container_network_receive_bytes_total[5m])) by (namespace)
-        
+
         # Network transmitted by namespace
         - record: namespace:container_network_transmit_bytes:sum
           expr: |
@@ -1187,8 +1186,8 @@ alertmanager:
       smtp_smarthost: 'smtp.gmail.com:587'
       smtp_from: 'alertmanager@example.com'
       smtp_auth_username: 'alertmanager@example.com'
-      smtp_auth_password: 'your-app-password'
-    
+      smtp_auth_password: ''
+
     receivers:
       - name: 'email'
         email_configs:
@@ -1205,7 +1204,7 @@ alertmanager:
     receivers:
       - name: 'pagerduty'
         pagerduty_configs:
-          - service_key: 'your-pagerduty-service-key'
+          - service_key: 'your-pagerduty-service-key' #pragma: allowlist secret
             description: '{{ .GroupLabels.alertname }}'
 ```
 
@@ -1262,6 +1261,7 @@ Create `monitoring/slo-dashboard.json` for SLO tracking:
 ### 8.2 Implement the Four Golden Signals
 
 Monitor:
+
 1. **Latency**: Response time of requests
 2. **Traffic**: Request rate
 3. **Errors**: Error rate
@@ -1286,12 +1286,12 @@ prometheus:
   prometheusSpec:
     # Reduce retention for local dev
     retention: 7d
-    
+
     # Limit memory usage
     resources:
       limits:
         memory: 2Gi
-    
+
     # Optimize scrape interval
     scrapeInterval: 60s  # Increase for less critical metrics
 ```
@@ -1521,6 +1521,7 @@ echo -e "\n✅ Verification complete!"
 ## Next Steps
 
 Now that monitoring is set up, proceed to:
+
 - **[05-demo-application.md](./05-demo-application.md)** - Create and deploy the demo Go application
 
 ---

@@ -1,0 +1,238 @@
+# Jenkins Helm Chart Values (Compatible with Chart v5.x)
+# Production-ready configuration for Kubernetes
+
+controller:
+  # Jenkins controller configuration
+  componentName: "jenkins-controller"
+
+  # Image configuration (v5.x format)
+  image:
+    registry: "docker.io"
+    repository: "jenkins/jenkins"
+    tag: "2.479.2-jdk17"  # Latest LTS compatible with plugins
+    pullPolicy: "IfNotPresent"
+
+  # Admin user configuration (v5.x format)
+  admin:
+    username: "admin"
+    # Password will be auto-generated
+    # Retrieve with: kubectl get secret jenkins -n jenkins -o jsonpath='{.data.jenkins-admin-password}' | base64 -d
+
+  # Resource limits
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "2Gi"
+    limits:
+      cpu: "2000m"
+      memory: "4Gi"
+
+  # Java options for performance
+  javaOpts: >-
+    -Xms2048m
+    -Xmx2048m
+    -XX:+UseG1GC
+    -XX:+UseStringDeduplication
+    -XX:+ParallelRefProcEnabled
+    -XX:+DisableExplicitGC
+    -Djava.awt.headless=true
+
+  # Jenkins URL
+  jenkinsUrl: "http://jenkins.local:8080"
+  jenkinsUriPrefix: "/"
+
+  # Number of executors on controller (keep low, use agents)
+  numExecutors: 0
+
+  # Install plugins (using :latest for compatibility)
+  installPlugins:
+    # Essential plugins
+    - kubernetes:latest
+    - workflow-aggregator:latest
+    - git:latest
+    - configuration-as-code:latest
+
+    # SCM plugins
+    - github:latest
+    - github-branch-source:latest
+
+    # Build tools
+    - docker-workflow:latest
+    - pipeline-stage-view:latest
+
+    # Credentials
+    - credentials-binding:latest
+    - plain-credentials:latest
+
+    # Utilities
+    - timestamper:latest
+    - ws-cleanup:latest
+    - ansicolor:latest
+
+  # Additional plugins
+  additionalPlugins:
+    - blueocean:latest
+    - kubernetes-cli:latest
+
+  # Jenkins Configuration as Code (JCasC)
+  JCasC:
+    defaultConfig: true
+    configScripts:
+      welcome-message: |
+        jenkins:
+          systemMessage: |
+            Welcome to Jenkins on Kubernetes!
+            Environment: Development
+            Cluster: Minikube Local
+
+      kubernetes-cloud: |
+        jenkins:
+          clouds:
+            - kubernetes:
+                name: "kubernetes"
+                serverUrl: "https://kubernetes.default"
+                namespace: "jenkins"
+                jenkinsUrl: "http://jenkins:8080"
+                jenkinsTunnel: "jenkins-agent:50000"
+                containerCapStr: "10"
+                maxRequestsPerHostStr: "32"
+                retentionTimeout: 5
+                connectTimeout: 10
+                readTimeout: 20
+
+                templates:
+                  - name: "jenkins-agent"
+                    namespace: "jenkins"
+                    label: "jenkins-agent"
+                    nodeUsageMode: NORMAL
+                    containers:
+                      - name: "jnlp"
+                        image: "jenkins/inbound-agent:latest"
+                        alwaysPullImage: false
+                        workingDir: "/home/jenkins/agent"
+                        ttyEnabled: true
+                        resourceRequestCpu: "500m"
+                        resourceRequestMemory: "512Mi"
+                        resourceLimitCpu: "1000m"
+                        resourceLimitMemory: "1Gi"
+
+                    volumes:
+                      - emptyDirVolume:
+                          memory: false
+                          mountPath: "/tmp"
+
+                    yaml: |
+                      apiVersion: v1
+                      kind: Pod
+                      spec:
+                        securityContext:
+                          runAsUser: 1000
+                          fsGroup: 1000
+
+                  - name: "docker-agent"
+                    namespace: "jenkins"
+                    label: "docker"
+                    nodeUsageMode: NORMAL
+                    containers:
+                      - name: "docker"
+                        image: "docker:24-dind"
+                        alwaysPullImage: false
+                        workingDir: "/home/jenkins/agent"
+                        ttyEnabled: true
+                        privileged: true
+                        resourceRequestCpu: "500m"
+                        resourceRequestMemory: "1Gi"
+                        resourceLimitCpu: "2000m"
+                        resourceLimitMemory: "2Gi"
+                        command: "dockerd-entrypoint.sh"
+                      - name: "jnlp"
+                        image: "jenkins/inbound-agent:latest"
+                        alwaysPullImage: false
+                        workingDir: "/home/jenkins/agent"
+                        ttyEnabled: true
+                        resourceRequestCpu: "200m"
+                        resourceRequestMemory: "256Mi"
+                        resourceLimitCpu: "500m"
+                        resourceLimitMemory: "512Mi"
+
+                  - name: "go-agent"
+                    namespace: "jenkins"
+                    label: "golang"
+                    nodeUsageMode: NORMAL
+                    containers:
+                      - name: "golang"
+                        image: "golang:1.21"
+                        alwaysPullImage: false
+                        workingDir: "/home/jenkins/agent"
+                        ttyEnabled: true
+                        command: "cat"
+                        resourceRequestCpu: "500m"
+                        resourceRequestMemory: "512Mi"
+                        resourceLimitCpu: "1000m"
+                        resourceLimitMemory: "1Gi"
+                      - name: "jnlp"
+                        image: "jenkins/inbound-agent:latest"
+                        alwaysPullImage: false
+                        workingDir: "/home/jenkins/agent"
+                        ttyEnabled: true
+
+  # Ingress configuration
+  ingress:
+    enabled: true
+    apiVersion: "networking.k8s.io/v1"
+    annotations:
+      kubernetes.io/ingress.class: nginx
+      nginx.ingress.kubernetes.io/ssl-redirect: "false"
+      nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+      nginx.ingress.kubernetes.io/proxy-request-buffering: "off"
+    hostName: jenkins.local
+    path: /
+    pathType: Prefix
+
+  # Service configuration
+  serviceType: ClusterIP
+  servicePort: 8080
+  targetPort: 8080
+
+  # Agent listener service
+  agentListenerServiceType: ClusterIP
+
+  # Health probes
+  healthProbes: true
+  healthProbesLivenessTimeout: 5
+  healthProbesReadinessTimeout: 5
+  healthProbeLivenessPeriodSeconds: 10
+  healthProbeReadinessPeriodSeconds: 10
+  healthProbeLivenessFailureThreshold: 5
+  healthProbeReadinessFailureThreshold: 3
+  healthProbeLivenessInitialDelay: 90
+  healthProbeReadinessInitialDelay: 60
+
+  # Prometheus monitoring (disabled until Prometheus Operator is installed)
+  prometheus:
+    enabled: false
+
+# Persistence configuration
+persistence:
+  enabled: true
+  existingClaim: ""
+  storageClass: "standard"
+  accessMode: "ReadWriteOnce"
+  size: "20Gi"
+
+# Service Account
+serviceAccount:
+  create: true
+  name: jenkins
+  annotations: {}
+
+# RBAC
+rbac:
+  create: true
+  readSecrets: true
+
+# Network Policy
+networkPolicy:
+  enabled: false  # We have custom network policies already
+
+# Made with Bob

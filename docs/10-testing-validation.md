@@ -18,20 +18,20 @@ graph TB
         LOAD[Load Tests]
         CHAOS[Chaos Tests]
     end
-    
+
     subgraph "Validation"
         MANIFEST[Manifest Validation]
         SECURITY[Security Scanning]
         COMPLIANCE[Compliance Checks]
         PERFORMANCE[Performance Tests]
     end
-    
+
     UNIT --> INTEGRATION
     INTEGRATION --> E2E
     E2E --> SMOKE
     SMOKE --> LOAD
     LOAD --> CHAOS
-    
+
     MANIFEST --> SECURITY
     SECURITY --> COMPLIANCE
     COMPLIANCE --> PERFORMANCE
@@ -235,19 +235,19 @@ echo "🔍 Running Service Communication Tests..."
 # Deploy test pod
 kubectl run test-pod --image=curlimages/curl -n $NAMESPACE --rm -it --restart=Never -- /bin/sh -c "
     echo 'Testing service communication...'
-    
+
     # Test service by name
     curl -f http://demo-app:80/health || exit 1
     echo '✓ Service accessible by name'
-    
+
     # Test service by FQDN
     curl -f http://demo-app.$NAMESPACE.svc.cluster.local:80/health || exit 1
     echo '✓ Service accessible by FQDN'
-    
+
     # Test API endpoint
     curl -f http://demo-app:80/api/v1/info || exit 1
     echo '✓ API endpoint accessible'
-    
+
     echo '✅ Service communication test passed!'
 "
 ```
@@ -269,11 +269,11 @@ POD=$(kubectl get pod -n $NAMESPACE -l app=demo-app -o jsonpath='{.items[0].meta
 
 kubectl exec $POD -n $NAMESPACE -- /bin/sh -c "
     echo 'Testing database connection...'
-    
+
     # Add your database connection test here
     # Example for PostgreSQL:
     # psql -h postgres-service -U user -d database -c 'SELECT 1'
-    
+
     echo '✅ Database connection test passed!'
 "
 ```
@@ -294,15 +294,15 @@ POD=$(kubectl get pod -n $NAMESPACE -l app=demo-app -o jsonpath='{.items[0].meta
 
 kubectl exec $POD -n $NAMESPACE -- /bin/sh -c "
     echo 'Testing external API access...'
-    
+
     # Test DNS resolution
     nslookup google.com || exit 1
     echo '✓ DNS resolution working'
-    
+
     # Test HTTPS connectivity
     wget -q -O- https://www.google.com > /dev/null || exit 1
     echo '✓ HTTPS connectivity working'
-    
+
     echo '✅ External API integration test passed!'
 "
 ```
@@ -905,15 +905,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Validate Manifests
         run: |
           kubeval k8s/**/*.yaml
-      
+
       - name: Security Scan
         run: |
           trivy config k8s/
-      
+
       - name: Run Tests
         run: |
           ./tests/run-all-tests.sh

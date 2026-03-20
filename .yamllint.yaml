@@ -1,0 +1,48 @@
+# YAML Linting Configuration
+# Used by yamllint pre-commit hook
+
+extends: default
+
+rules:
+  # Line length
+  line-length:
+    max: 120
+    level: warning
+
+  # Indentation
+  indentation:
+    spaces: 2
+    indent-sequences: true
+
+  # Comments
+  comments:
+    min-spaces-from-content: 1
+
+  # Document start (---)
+  document-start:
+    present: false  # Don't require --- at start
+
+  # Trailing spaces
+  trailing-spaces: enable
+
+  # Empty lines
+  empty-lines:
+    max: 2
+
+  # Key duplicates
+  key-duplicates: enable
+
+  # Truthy values (yes/no vs true/false)
+  truthy:
+    allowed-values: ['true', 'false', 'yes', 'no']
+    check-keys: false
+
+# Ignore patterns
+ignore: |
+  .github/
+  node_modules/
+  venv/
+  .venv/
+  demo-app/helm-chart/
+
+# Made with Bob

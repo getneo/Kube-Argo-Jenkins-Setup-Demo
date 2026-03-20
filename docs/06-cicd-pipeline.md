@@ -17,10 +17,10 @@ sequenceDiagram
     participant ArgoCD as ArgoCD
     participant K8s as Kubernetes
     participant Prom as Prometheus
-    
+
     Dev->>Git: 1. Push code changes
     Git->>Jenkins: 2. Webhook trigger
-    
+
     rect rgb(200, 220, 240)
         Note over Jenkins: CI Pipeline
         Jenkins->>Jenkins: 3. Checkout code
@@ -31,7 +31,7 @@ sequenceDiagram
         Jenkins->>Registry: 8. Push image
         Jenkins->>Git: 9. Update manifests
     end
-    
+
     rect rgb(220, 240, 200)
         Note over ArgoCD: CD Pipeline
         ArgoCD->>Git: 10. Detect changes
@@ -40,7 +40,7 @@ sequenceDiagram
         K8s->>K8s: 13. Rolling update
         K8s->>ArgoCD: 14. Health status
     end
-    
+
     K8s->>Prom: 15. Expose metrics
     Prom->>Dev: 16. Alert if issues
     ArgoCD->>Dev: 17. Deployment notification
@@ -49,6 +49,7 @@ sequenceDiagram
 ### Pipeline Stages
 
 **CI Pipeline (Jenkins):**
+
 1. Code Checkout
 2. Unit Testing
 3. Code Linting
@@ -58,6 +59,7 @@ sequenceDiagram
 7. Update Kubernetes Manifests
 
 **CD Pipeline (ArgoCD):**
+
 1. Detect Manifest Changes
 2. Validate Resources
 3. Sync to Cluster
@@ -122,22 +124,22 @@ spec:
 """
         }
     }
-    
+
     // Environment variables
     environment {
         // Docker registry
         DOCKER_REGISTRY = 'docker.io'
         DOCKER_REPO = 'your-username/demo-app'
         DOCKER_CREDENTIALS = 'docker-registry-creds'
-        
+
         // Git repository
         GIT_REPO = 'https://github.com/your-username/your-repo.git'
         GIT_CREDENTIALS = 'git-credentials'
-        
+
         // Application
         APP_NAME = 'demo-app'
         APP_NAMESPACE = 'demo-app'
-        
+
         // Build info
         BUILD_VERSION = "${env.BUILD_NUMBER}"
         GIT_COMMIT_SHORT = sh(
@@ -146,7 +148,7 @@ spec:
         ).trim()
         IMAGE_TAG = "${BUILD_VERSION}-${GIT_COMMIT_SHORT}"
     }
-    
+
     // Build options
     options {
         buildDiscarder(logRotator(numToKeepStr: '10'))
@@ -154,16 +156,16 @@ spec:
         timeout(time: 30, unit: 'MINUTES')
         disableConcurrentBuilds()
     }
-    
+
     // Triggers
     triggers {
         // Poll SCM every 5 minutes
         pollSCM('H/5 * * * *')
-        
+
         // GitHub webhook
         githubPush()
     }
-    
+
     // Pipeline stages
     stages {
         stage('Checkout') {
@@ -171,7 +173,7 @@ spec:
                 script {
                     echo "🔄 Checking out code..."
                     checkout scm
-                    
+
                     // Get commit info
                     env.GIT_COMMIT_MSG = sh(
                         script: 'git log -1 --pretty=%B',
@@ -181,14 +183,14 @@ spec:
                         script: 'git log -1 --pretty=%an',
                         returnStdout: true
                     ).trim()
-                    
+
                     echo "Commit: ${env.GIT_COMMIT_SHORT}"
                     echo "Author: ${env.GIT_AUTHOR}"
                     echo "Message: ${env.GIT_COMMIT_MSG}"
                 }
             }
         }
-        
+
         stage('Test') {
             steps {
                 container('golang') {
@@ -211,7 +213,7 @@ spec:
                 }
             }
         }
-        
+
         stage('Lint') {
             steps {
                 container('golang') {
@@ -227,7 +229,7 @@ spec:
                 }
             }
         }
-        
+
         stage('Build Image') {
             steps {
                 container('docker') {
@@ -246,7 +248,7 @@ spec:
                 }
             }
         }
-        
+
         stage('Security Scan') {
             steps {
                 container('trivy') {
@@ -263,7 +265,7 @@ spec:
                 }
             }
         }
-        
+
         stage('Push Image') {
             steps {
                 container('docker') {
@@ -280,40 +282,40 @@ spec:
                 }
             }
         }
-        
+
         stage('Update Manifests') {
             steps {
                 container('kubectl') {
                     script {
                         echo "📝 Updating Kubernetes manifests..."
-                        
+
                         // Clone manifest repository
                         withCredentials([usernamePassword(
                             credentialsId: GIT_CREDENTIALS,
                             usernameVariable: 'GIT_USERNAME',
-                            passwordVariable: 'GIT_PASSWORD'
+                            passwordVariable: 'GIT_PASSWORD' //pragma: allowlist secret
                         )]) {
                             sh """
                                 git config --global user.email "jenkins@example.com"
                                 git config --global user.name "Jenkins CI"
-                                
+
                                 # Update image tag in kustomization
                                 cd k8s/overlays/dev
                                 kustomize edit set image ${DOCKER_REPO}:${IMAGE_TAG}
-                                
+
                                 # Commit and push
                                 git add .
                                 git commit -m "Update image to ${IMAGE_TAG}" || true
                                 git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/your-username/your-repo.git HEAD:main
                             """
                         }
-                        
+
                         echo "✅ Manifests updated"
                     }
                 }
             }
         }
-        
+
         stage('Trigger ArgoCD Sync') {
             steps {
                 container('kubectl') {
@@ -323,16 +325,16 @@ spec:
                             # Install ArgoCD CLI
                             curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
                             chmod +x /usr/local/bin/argocd
-                            
+
                             # Login to ArgoCD
                             argocd login argocd-server.argocd.svc.cluster.local:443 \
                                 --username admin \
                                 --password \$(kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}" | base64 -d) \
                                 --insecure
-                            
+
                             # Sync application
                             argocd app sync ${APP_NAME} --force
-                            
+
                             # Wait for sync to complete
                             argocd app wait ${APP_NAME} --timeout 300
                         """
@@ -341,7 +343,7 @@ spec:
                 }
             }
         }
-        
+
         stage('Verify Deployment') {
             steps {
                 container('kubectl') {
@@ -350,10 +352,10 @@ spec:
                         sh """
                             # Wait for rollout
                             kubectl rollout status deployment/${APP_NAME} -n ${APP_NAMESPACE} --timeout=5m
-                            
+
                             # Check pod status
                             kubectl get pods -n ${APP_NAMESPACE} -l app=${APP_NAME}
-                            
+
                             # Test health endpoint
                             POD=\$(kubectl get pod -n ${APP_NAMESPACE} -l app=${APP_NAME} -o jsonpath='{.items[0].metadata.name}')
                             kubectl exec -n ${APP_NAMESPACE} \$POD -- wget -q -O- http://localhost:8080/health
@@ -364,13 +366,13 @@ spec:
             }
         }
     }
-    
+
     // Post-build actions
     post {
         success {
             script {
                 echo "✅ Pipeline completed successfully!"
-                
+
                 // Send notification
                 slackSend(
                     color: 'good',
@@ -385,11 +387,11 @@ spec:
                 )
             }
         }
-        
+
         failure {
             script {
                 echo "❌ Pipeline failed!"
-                
+
                 // Send notification
                 slackSend(
                     color: 'danger',
@@ -404,7 +406,7 @@ spec:
                 )
             }
         }
-        
+
         always {
             script {
                 // Clean up
@@ -428,25 +430,25 @@ pipeline {
             defaultContainer 'docker'
         }
     }
-    
+
     environment {
         DOCKER_REPO = 'your-username/demo-app'
         IMAGE_TAG = "${env.BUILD_NUMBER}"
     }
-    
+
     stages {
         stage('Build') {
             steps {
                 sh 'docker build -t ${DOCKER_REPO}:${IMAGE_TAG} app/'
             }
         }
-        
+
         stage('Test') {
             steps {
                 sh 'docker run --rm ${DOCKER_REPO}:${IMAGE_TAG} go test ./...'
             }
         }
-        
+
         stage('Push') {
             steps {
                 withDockerRegistry([credentialsId: 'docker-registry-creds']) {
@@ -471,8 +473,9 @@ pipeline {
 5. Click **OK**
 
 Configure pipeline:
+
 - **Description**: Demo application CI/CD pipeline
-- **Build Triggers**: 
+- **Build Triggers**:
   - ☑ GitHub hook trigger for GITScm polling
   - ☑ Poll SCM: `H/5 * * * *`
 - **Pipeline**:
@@ -496,12 +499,12 @@ controller:
           - script: >
               pipelineJob('demo-app-pipeline') {
                 description('Demo application CI/CD pipeline')
-                
+
                 triggers {
                   githubPush()
                   scm('H/5 * * * *')
                 }
-                
+
                 definition {
                   cpsScm {
                     scm {
@@ -563,34 +566,34 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
-  
+
   source:
     repoURL: https://github.com/your-username/your-repo.git
     targetRevision: main
     path: k8s/overlays/dev
-  
+
   destination:
     server: https://kubernetes.default.svc
     namespace: demo-app
-  
+
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
       allowEmpty: false
-    
+
     syncOptions:
       - CreateNamespace=true
       - PrunePropagationPolicy=foreground
       - PruneLast=true
-    
+
     retry:
       limit: 5
       backoff:
         duration: 5s
         factor: 2
         maxDuration: 3m
-  
+
   revisionHistoryLimit: 10
 ```
 
@@ -638,23 +641,23 @@ spec:
         runAsNonRoot: true
         runAsUser: 65534
         fsGroup: 65534
-      
+
       containers:
         - name: demo-app
           image: your-username/demo-app:latest
           imagePullPolicy: Always
-          
+
           ports:
             - name: http
               containerPort: 8080
               protocol: TCP
-          
+
           env:
             - name: PORT
               value: "8080"
             - name: LOG_LEVEL
               value: "info"
-          
+
           resources:
             requests:
               cpu: 100m
@@ -662,7 +665,7 @@ spec:
             limits:
               cpu: 500m
               memory: 512Mi
-          
+
           livenessProbe:
             httpGet:
               path: /live
@@ -671,7 +674,7 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 3
             failureThreshold: 3
-          
+
           readinessProbe:
             httpGet:
               path: /ready
@@ -680,7 +683,7 @@ spec:
             periodSeconds: 5
             timeoutSeconds: 3
             failureThreshold: 3
-          
+
           startupProbe:
             httpGet:
               path: /health
@@ -689,7 +692,7 @@ spec:
             periodSeconds: 5
             timeoutSeconds: 3
             failureThreshold: 30
-          
+
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -698,11 +701,11 @@ spec:
             capabilities:
               drop:
                 - ALL
-          
+
           volumeMounts:
             - name: tmp
               mountPath: /tmp
-      
+
       volumes:
         - name: tmp
           emptyDir: {}
@@ -909,7 +912,7 @@ stage('Verify Deployment') {
             try {
                 // Verify deployment
                 sh 'kubectl rollout status deployment/demo-app -n demo-app --timeout=5m'
-                
+
                 // Run smoke tests
                 sh './scripts/smoke-test.sh'
             } catch (Exception e) {
@@ -1209,6 +1212,7 @@ kubectl rollout undo deployment/demo-app -n demo-app
 ## 14. Next Steps
 
 Now that the CI/CD pipeline is set up, proceed to:
+
 - **[07-security-practices.md](./07-security-practices.md)** - Implement security best practices
 
 ---

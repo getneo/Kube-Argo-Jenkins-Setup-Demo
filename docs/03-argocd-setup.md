@@ -16,30 +16,30 @@ graph TB
         CONTROLLER[Application Controller]
         REDIS[Redis Cache]
         DEX[Dex SSO - Optional]
-        
+
         SERVER -->|Queries| REDIS
         SERVER -->|Manages| CONTROLLER
         CONTROLLER -->|Fetches| REPO
     end
-    
+
     subgraph "Git Repository"
         MANIFESTS[K8s Manifests]
         HELM[Helm Charts]
         KUSTOMIZE[Kustomize Overlays]
     end
-    
+
     subgraph "Target Namespaces"
         APP1[Demo App]
         APP2[Monitoring]
         APP3[Other Apps]
     end
-    
+
     subgraph "External Access"
         USER[Developer]
         CLI[ArgoCD CLI]
         UI[Web UI]
     end
-    
+
     REPO -->|Clones| MANIFESTS
     REPO -->|Clones| HELM
     REPO -->|Clones| KUSTOMIZE
@@ -270,14 +270,14 @@ metadata:
 data:
   # Enable anonymous access (for demo only - disable in production)
   # users.anonymous.enabled: "false"
-  
+
   # Application instance label key
   application.instanceLabelKey: argocd.argoproj.io/instance
-  
+
   # Timeout settings
   timeout.reconciliation: 180s
   timeout.hard.reconciliation: 0s
-  
+
   # Resource customizations
   resource.customizations: |
     admissionregistration.k8s.io/MutatingWebhookConfiguration:
@@ -288,7 +288,7 @@ data:
       ignoreDifferences: |
         jsonPointers:
         - /webhooks/0/clientConfig/caBundle
-  
+
   # Repository credentials template
   repository.credentials: |
     - url: https://github.com/your-org
@@ -298,10 +298,10 @@ data:
       usernameSecret:
         name: github-secret
         key: username
-  
+
   # Kustomize build options
   kustomize.buildOptions: --enable-helm
-  
+
   # Helm repositories
   helm.repositories: |
     - url: https://charts.bitnami.com/bitnami
@@ -334,7 +334,7 @@ metadata:
 data:
   # Default policy
   policy.default: role:readonly
-  
+
   # CSV format for RBAC policies
   policy.csv: |
     # Admin role - full access
@@ -345,7 +345,7 @@ data:
     p, role:admin, accounts, *, *, allow
     p, role:admin, certificates, *, *, allow
     p, role:admin, gpgkeys, *, *, allow
-    
+
     # Developer role - can manage applications
     p, role:developer, applications, get, */*, allow
     p, role:developer, applications, create, */*, allow
@@ -354,20 +354,20 @@ data:
     p, role:developer, applications, delete, */*, allow
     p, role:developer, repositories, get, *, allow
     p, role:developer, projects, get, *, allow
-    
+
     # Readonly role - view only
     p, role:readonly, applications, get, */*, allow
     p, role:readonly, repositories, get, *, allow
     p, role:readonly, projects, get, *, allow
     p, role:readonly, clusters, get, *, allow
-    
+
     # CI/CD role - for automation
     p, role:cicd, applications, sync, */*, allow
     p, role:cicd, applications, get, */*, allow
-    
+
     # Grant admin role to admin user
     g, admin, role:admin
-  
+
   # Scopes for SSO (if using)
   scopes: '[groups, email]'
 ```
@@ -470,26 +470,26 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   description: Default project for all applications
-  
+
   # Source repositories
   sourceRepos:
     - '*'  # Allow all repositories
-  
+
   # Destination clusters and namespaces
   destinations:
     - namespace: '*'
       server: https://kubernetes.default.svc
-  
+
   # Cluster resource whitelist
   clusterResourceWhitelist:
     - group: '*'
       kind: '*'
-  
+
   # Namespace resource whitelist
   namespaceResourceWhitelist:
     - group: '*'
       kind: '*'
-  
+
   # Orphaned resources monitoring
   orphanedResources:
     warn: true
@@ -509,24 +509,24 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   description: Development environment applications
-  
+
   sourceRepos:
     - https://github.com/your-org/k8s-manifests.git
-  
+
   destinations:
     - namespace: demo-app
       server: https://kubernetes.default.svc
     - namespace: dev-*
       server: https://kubernetes.default.svc
-  
+
   clusterResourceWhitelist:
     - group: ''
       kind: Namespace
-  
+
   namespaceResourceWhitelist:
     - group: '*'
       kind: '*'
-  
+
   roles:
     - name: developer
       description: Developer access to development apps
@@ -584,13 +584,13 @@ metadata:
 spec:
   # Project the application belongs to
   project: default
-  
+
   # Source repository
   source:
     repoURL: https://github.com/your-username/your-repo.git
     targetRevision: main
     path: k8s/overlays/dev
-    
+
     # For Kustomize
     kustomize:
       namePrefix: dev-
@@ -598,7 +598,7 @@ spec:
         environment: development
       images:
         - your-image:tag
-    
+
     # For Helm (alternative)
     # helm:
     #   releaseName: demo-app
@@ -607,38 +607,38 @@ spec:
     #   parameters:
     #     - name: image.tag
     #       value: v1.0.0
-  
+
   # Destination cluster and namespace
   destination:
     server: https://kubernetes.default.svc
     namespace: demo-app
-  
+
   # Sync policy
   syncPolicy:
     automated:
       prune: true      # Delete resources not in Git
       selfHeal: true   # Sync when cluster state differs
       allowEmpty: false
-    
+
     syncOptions:
       - CreateNamespace=true
       - PrunePropagationPolicy=foreground
       - PruneLast=true
-    
+
     retry:
       limit: 5
       backoff:
         duration: 5s
         factor: 2
         maxDuration: 3m
-  
+
   # Ignore differences
   ignoreDifferences:
     - group: apps
       kind: Deployment
       jsonPointers:
         - /spec/replicas
-  
+
   # Health assessment
   revisionHistoryLimit: 10
 ```
@@ -667,7 +667,7 @@ metadata:
   namespace: argocd
 spec:
   project: default
-  
+
   source:
     chart: kube-prometheus-stack
     repoURL: https://prometheus-community.github.io/helm-charts
@@ -687,11 +687,11 @@ spec:
                       storage: 10Gi
         grafana:
           adminPassword: admin123
-  
+
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
-  
+
   syncPolicy:
     automated:
       prune: true
@@ -795,7 +795,7 @@ data:
   # Notification services
   service.slack: |
     token: $slack-token
-  
+
   # Notification templates
   template.app-deployed: |
     message: |
@@ -819,7 +819,7 @@ data:
           }
           ]
         }]
-  
+
   template.app-health-degraded: |
     message: |
       Application {{.app.metadata.name}} has degraded health.
@@ -837,7 +837,7 @@ data:
           }
           ]
         }]
-  
+
   template.app-sync-failed: |
     message: |
       Application {{.app.metadata.name}} sync failed.
@@ -855,16 +855,16 @@ data:
           }
           ]
         }]
-  
+
   # Triggers
   trigger.on-deployed: |
     - when: app.status.operationState.phase in ['Succeeded']
       send: [app-deployed]
-  
+
   trigger.on-health-degraded: |
     - when: app.status.health.status == 'Degraded'
       send: [app-health-degraded]
-  
+
   trigger.on-sync-failed: |
     - when: app.status.operationState.phase in ['Error', 'Failed']
       send: [app-sync-failed]
@@ -921,7 +921,7 @@ spec:
           - environment: prod
             namespace: demo-app-prod
             replicas: "3"
-  
+
   template:
     metadata:
       name: 'demo-app-{{environment}}'
@@ -1059,6 +1059,7 @@ kubectl apply -f argocd/servicemonitor.yaml
 ### 12.2 Import Grafana Dashboard
 
 ArgoCD provides official Grafana dashboards:
+
 - Dashboard ID: 14584 (ArgoCD Operational)
 - Dashboard ID: 14585 (ArgoCD Application)
 
@@ -1091,7 +1092,7 @@ stringData:
     ...
     -----END CERTIFICATE-----
   tlsClientCertKey: |
-    -----BEGIN RSA PRIVATE KEY-----
+    -----BEGIN RSA PRIVATE KEY----- //pragma: allowlist secret
     ...
     -----END RSA PRIVATE KEY-----
 ```
@@ -1371,6 +1372,7 @@ echo -e "\n✅ Verification complete!"
 ## Next Steps
 
 Now that ArgoCD is set up, proceed to:
+
 - **[04-monitoring-setup.md](./04-monitoring-setup.md)** - Install Prometheus and Grafana for monitoring
 
 ---

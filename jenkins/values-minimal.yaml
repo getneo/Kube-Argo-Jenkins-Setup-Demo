@@ -1,0 +1,120 @@
+# Jenkins Minimal Configuration - Get it running first
+# We'll add plugins and customizations after Jenkins is up
+
+controller:
+  # Use chart defaults for image (latest stable)
+  # Don't specify image to use chart's default
+
+  # Admin user
+  admin:
+    username: "admin"
+
+  # Resource limits
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "2Gi"
+    limits:
+      cpu: "2000m"
+      memory: "4Gi"
+
+  # Java options
+  javaOpts: >-
+    -Xms2048m
+    -Xmx2048m
+    -XX:+UseG1GC
+
+  # Jenkins URL
+  jenkinsUrl: "http://jenkins.local:8080"
+
+  # No executors on controller
+  numExecutors: 0
+
+  # Don't install additional plugins - use chart defaults only
+  installPlugins: []
+  additionalPlugins: []
+
+  # Jenkins Configuration as Code
+  JCasC:
+    defaultConfig: true
+    configScripts:
+      security: |
+        jenkins:
+          securityRealm:
+            local:
+              allowsSignup: false
+              users:
+                - id: "admin"
+                  name: "Administrator"
+                  password: "${chart-admin-password}"
+
+          authorizationStrategy:
+            loggedInUsersCanDoAnything:
+              allowAnonymousRead: false
+
+          remotingSecurity:
+            enabled: true
+
+          crumbIssuer:
+            standard:
+              excludeClientIPFromCrumb: false
+
+        security:
+          apiToken:
+            creationOfLegacyTokenEnabled: false
+            tokenGenerationOnCreationEnabled: false
+            usageStatisticsEnabled: true
+
+        unclassified:
+          location:
+            url: "http://jenkins.local:8080"
+
+      kubernetes-cloud: |
+        jenkins:
+          clouds:
+            - kubernetes:
+                name: "kubernetes"
+                serverUrl: "https://kubernetes.default"
+                namespace: "jenkins"
+                jenkinsUrl: "http://jenkins:8080"
+                jenkinsTunnel: "jenkins-agent:50000"
+
+  # Ingress
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hostName: jenkins.local
+    path: /
+    pathType: Prefix
+
+  # Service
+  serviceType: ClusterIP
+  servicePort: 8080
+
+  # Health probes
+  healthProbes: true
+  healthProbeLivenessInitialDelay: 90
+  healthProbeReadinessInitialDelay: 60
+
+# Persistence
+persistence:
+  enabled: true
+  storageClass: "standard"
+  accessMode: "ReadWriteOnce"
+  size: "20Gi"
+
+# Service Account
+serviceAccount:
+  create: true
+  name: jenkins
+
+# RBAC
+rbac:
+  create: true
+  readSecrets: true
+
+# Network Policy - disabled (we have custom ones)
+networkPolicy:
+  enabled: false
+
+# Made with Bob

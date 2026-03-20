@@ -1,0 +1,17 @@
+{{- if .Values.configMap.create -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "demo-app.fullname" . }}-config
+  namespace: {{ include "demo-app.namespace" . }}
+  labels:
+    {{- include "demo-app.labels" . | nindent 4 }}
+  {{- with .Values.commonAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+data:
+  {{- toYaml .Values.configMap.data | nindent 2 }}
+{{- end }}
+
+# Made with Bob

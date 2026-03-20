@@ -30,31 +30,31 @@ graph TB
         DEV[Developer]
         GIT[Git Repository]
     end
-    
+
     subgraph "Local Kubernetes Cluster - Minikube"
         subgraph "CI/CD Namespace"
             JENKINS[Jenkins]
             ARGOCD[ArgoCD]
         end
-        
+
         subgraph "Monitoring Namespace"
             PROM[Prometheus]
             GRAF[Grafana]
             ALERT[Alertmanager]
         end
-        
+
         subgraph "Application Namespace"
             APP[Go Web App]
             SVC[Service]
             ING[Ingress]
         end
-        
+
         subgraph "System Components"
             METRICS[Metrics Server]
             DNS[CoreDNS]
         end
     end
-    
+
     DEV -->|1. Push Code| GIT
     GIT -->|2. Webhook| JENKINS
     JENKINS -->|3. Build & Test| JENKINS
@@ -78,7 +78,7 @@ sequenceDiagram
     participant ArgoCD as ArgoCD
     participant K8s as Kubernetes
     participant Prom as Prometheus
-    
+
     Dev->>Git: 1. Push code changes
     Git->>Jenkins: 2. Trigger webhook
     Jenkins->>Jenkins: 3. Run tests
@@ -114,6 +114,7 @@ sequenceDiagram
 ## 🚀 Quick Start Overview
 
 ### Prerequisites
+
 - macOS operating system
 - Docker Desktop installed and running
 - 8GB+ RAM available for Minikube
@@ -121,6 +122,7 @@ sequenceDiagram
 - Homebrew package manager
 
 ### Setup Timeline
+
 - **Minikube Setup**: ~10 minutes
 - **Jenkins Installation**: ~15 minutes
 - **ArgoCD Installation**: ~10 minutes
@@ -191,12 +193,14 @@ This guide is organized into the following sections:
 ## 🎓 SRE Best Practices Implemented
 
 ### 1. **Observability**
+
 - ✅ Structured logging with log levels
 - ✅ Prometheus metrics (RED method: Rate, Errors, Duration)
 - ✅ Distributed tracing ready
 - ✅ Custom dashboards for SLIs/SLOs
 
 ### 2. **Reliability**
+
 - ✅ Health checks (liveness, readiness, startup probes)
 - ✅ Resource limits and requests
 - ✅ Horizontal Pod Autoscaling (HPA)
@@ -204,6 +208,7 @@ This guide is organized into the following sections:
 - ✅ Rolling updates with zero downtime
 
 ### 3. **Security**
+
 - ✅ Non-root containers
 - ✅ Read-only root filesystem
 - ✅ Security contexts and capabilities
@@ -212,12 +217,14 @@ This guide is organized into the following sections:
 - ✅ Secrets encryption at rest
 
 ### 4. **Automation**
+
 - ✅ GitOps for declarative deployments
 - ✅ Automated testing in CI pipeline
 - ✅ Automated rollbacks on failure
 - ✅ Infrastructure as Code
 
 ### 5. **Scalability**
+
 - ✅ Stateless application design
 - ✅ Horizontal scaling capabilities
 - ✅ Resource optimization
@@ -245,17 +252,20 @@ Beyond the core requirements, this guide includes:
 ## 📊 Monitoring & Alerting Strategy
 
 ### Metrics Collection
+
 - **Application Metrics**: Custom business metrics, HTTP request metrics
 - **Infrastructure Metrics**: CPU, memory, disk, network
 - **Kubernetes Metrics**: Pod status, deployment health, resource usage
 
 ### Key Dashboards
+
 1. **Cluster Overview**: Node health, resource utilization
 2. **Application Performance**: Request rate, latency, error rate
 3. **Jenkins Pipeline**: Build success rate, duration
 4. **ArgoCD Sync Status**: Deployment health, sync frequency
 
 ### Alert Rules
+
 - High error rate (>5% for 5 minutes)
 - High latency (p95 >500ms for 5 minutes)
 - Pod crash loops
@@ -366,11 +376,11 @@ kubectl port-forward -n monitoring svc/prometheus 9090:9090
 
 ## 📞 Support & Resources
 
-- **Kubernetes Documentation**: https://kubernetes.io/docs/
-- **Jenkins Documentation**: https://www.jenkins.io/doc/
-- **ArgoCD Documentation**: https://argo-cd.readthedocs.io/
-- **Prometheus Documentation**: https://prometheus.io/docs/
-- **Grafana Documentation**: https://grafana.com/docs/
+- **Kubernetes Documentation**: <https://kubernetes.io/docs/>
+- **Jenkins Documentation**: <https://www.jenkins.io/doc/>
+- **ArgoCD Documentation**: <https://argo-cd.readthedocs.io/>
+- **Prometheus Documentation**: <https://prometheus.io/docs/>
+- **Grafana Documentation**: <https://grafana.com/docs/>
 
 ---
 

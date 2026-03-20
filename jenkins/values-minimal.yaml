@@ -116,5 +116,3 @@ rbac:
 # Network Policy - disabled (we have custom ones)
 networkPolicy:
   enabled: false
-
-# Made with Bob

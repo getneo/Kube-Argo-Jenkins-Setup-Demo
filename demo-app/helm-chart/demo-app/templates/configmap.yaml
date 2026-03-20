@@ -13,5 +13,3 @@ metadata:
 data:
   {{- toYaml .Values.configMap.data | nindent 2 }}
 {{- end }}
-
-# Made with Bob

@@ -19,5 +19,3 @@ spec:
     targetPort: http
     protocol: TCP
   sessionAffinity: None
-
-# Made with Bob

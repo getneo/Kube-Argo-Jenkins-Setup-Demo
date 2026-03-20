@@ -20,5 +20,3 @@ spec:
             name: argocd-server
             port:
               number: 443
-
-# Made with Bob

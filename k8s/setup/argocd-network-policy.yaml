@@ -72,5 +72,3 @@ spec:
       port: 443
     - protocol: TCP
       port: 22
-
-# Made with Bob

@@ -44,5 +44,3 @@ ignore: |
   venv/
   .venv/
   demo-app/helm-chart/
-
-# Made with Bob

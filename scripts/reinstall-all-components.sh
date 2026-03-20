@@ -206,5 +206,3 @@ echo "  ArgoCD:     kubectl port-forward -n argocd svc/argocd-server 8080:443"
 echo "  Grafana:    kubectl port-forward -n monitoring svc/prometheus-grafana 3000:80"
 echo ""
 print_status "All components installed successfully!"
-
-# Made with Bob

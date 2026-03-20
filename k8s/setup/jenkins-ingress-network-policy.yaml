@@ -26,5 +26,3 @@ spec:
       port: 8080
     - protocol: TCP
       port: 50000
-
-# Made with Bob

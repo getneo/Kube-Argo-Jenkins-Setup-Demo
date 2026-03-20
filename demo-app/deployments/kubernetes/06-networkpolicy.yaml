@@ -54,5 +54,3 @@ spec:
     ports:
     - protocol: TCP
       port: 443
-
-# Made with Bob

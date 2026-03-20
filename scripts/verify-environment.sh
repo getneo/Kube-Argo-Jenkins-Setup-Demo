@@ -310,5 +310,3 @@ else
     echo -e "${RED}  Please fix the failed checks before proceeding.${NC}"
     exit 1
 fi
-
-# Made with Bob

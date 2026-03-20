@@ -22,5 +22,3 @@ spec:
             name: demo-app
             port:
               number: 80
-
-# Made with Bob

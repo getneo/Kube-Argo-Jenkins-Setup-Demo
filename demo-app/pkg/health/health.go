@@ -90,5 +90,3 @@ func (c *Checker) SetReady(ready bool) {
 	c.ready.Store(ready)
 	c.logger.Info("Readiness status changed", zap.Bool("ready", ready))
 }
-
-// Made with Bob

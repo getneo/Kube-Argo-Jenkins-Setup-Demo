@@ -116,5 +116,3 @@ commonAnnotations:
   owner: sre-team
   contact: sre@example.com
   pagerduty: https://example.pagerduty.com/services/demo-app
-
-# Made with Bob

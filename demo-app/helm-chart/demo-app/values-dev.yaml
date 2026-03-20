@@ -47,5 +47,3 @@ serviceMonitor:
 
 networkPolicy:
   enabled: false  # Disable for easier local development
-
-# Made with Bob

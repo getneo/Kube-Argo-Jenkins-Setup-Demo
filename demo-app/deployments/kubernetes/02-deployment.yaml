@@ -155,5 +155,3 @@ spec:
 
       # Termination grace period
       terminationGracePeriodSeconds: 30
-
-# Made with Bob

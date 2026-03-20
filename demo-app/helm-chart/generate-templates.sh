@@ -493,5 +493,3 @@ echo "  2. Test rendering:    helm template demo-app $CHART_DIR"
 echo "  3. Dry run install:   helm install demo-app $CHART_DIR --dry-run --debug"
 echo "  4. Install chart:     helm install demo-app $CHART_DIR -n demo-app --create-namespace"
 echo ""
-
-# Made with Bob

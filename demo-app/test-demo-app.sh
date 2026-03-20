@@ -199,5 +199,3 @@ else
     echo -e "${RED}Some tests failed. Please check the output above.${NC}\n"
     exit 1
 fi
-
-# Made with Bob

@@ -234,5 +234,3 @@ rbac:
 # Network Policy
 networkPolicy:
   enabled: false  # We have custom network policies already
-
-# Made with Bob

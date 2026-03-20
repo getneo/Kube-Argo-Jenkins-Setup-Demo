@@ -10,5 +10,3 @@ data:
   ENVIRONMENT: "development"
   LOG_LEVEL: "info"
   PORT: "8080"
-
-# Made with Bob

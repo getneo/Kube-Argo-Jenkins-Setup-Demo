@@ -103,5 +103,3 @@ func main() {
 
 	logger.Info("Server exited gracefully")
 }
-
-// Made with Bob

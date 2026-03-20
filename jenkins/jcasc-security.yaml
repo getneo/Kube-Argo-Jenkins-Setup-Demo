@@ -31,5 +31,3 @@ security:
 unclassified:
   location:
     url: "http://jenkins.local:8080"
-
-# Made with Bob

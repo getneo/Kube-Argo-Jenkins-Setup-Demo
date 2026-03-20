@@ -10,5 +10,3 @@ spec:
   selector:
     matchLabels:
       app: demo-app
-
-# Made with Bob

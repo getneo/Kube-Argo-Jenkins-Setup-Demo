@@ -6,5 +6,3 @@ metadata:
     name: demo-app
     environment: development
     managed-by: argocd
-
-# Made with Bob

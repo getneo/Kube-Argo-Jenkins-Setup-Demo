@@ -19,5 +19,3 @@ spec:
   namespaceSelector:
     matchNames:
     - demo-app
-
-# Made with Bob

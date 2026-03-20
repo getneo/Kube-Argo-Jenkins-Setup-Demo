@@ -277,5 +277,3 @@ kubeProxy:
 # Kube Etcd
 kubeEtcd:
   enabled: false  # Not accessible in Minikube
-
-# Made with Bob

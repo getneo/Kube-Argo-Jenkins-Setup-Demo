@@ -1,0 +1,210 @@
+// Jenkins CI Pipeline for Demo Application (Local Minikube Version)
+// This pipeline builds, tests, and deploys to local Minikube without external Docker registry
+
+pipeline {
+    agent any
+
+    environment {
+        // Application details
+        APP_NAME = 'demo-app'
+        APP_VERSION = "${env.BUILD_NUMBER}"
+
+        // Local Docker image (no registry needed for Minikube)
+        DOCKER_IMAGE = "${APP_NAME}"
+
+        // Git repository
+        GIT_REPO = 'https://github.com/getneo/CKA.git'
+        GIT_BRANCH = 'main'
+
+        // Credentials (only Git needed for local)
+        GIT_CREDENTIALS_ID = 'git-credentials'
+
+        // Build information
+        GIT_COMMIT_SHORT = sh(
+            script: "git rev-parse --short HEAD",
+            returnStdout: true
+        ).trim()
+        BUILD_TIME = sh(
+            script: "date -u +%Y-%m-%dT%H:%M:%SZ",
+            returnStdout: true
+        ).trim()
+    }
+
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        timeout(time: 30, unit: 'MINUTES')
+        disableConcurrentBuilds()
+        timestamps()
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                echo '========== Stage 1: Checkout =========='
+                checkout scm
+
+                script {
+                    echo "Repository: ${GIT_REPO}"
+                    echo "Branch: ${GIT_BRANCH}"
+                    echo "Commit: ${GIT_COMMIT_SHORT}"
+                    echo "Build Number: ${BUILD_NUMBER}"
+                }
+            }
+        }
+
+        stage('Build & Test') {
+            steps {
+                echo '========== Stage 2: Build & Test =========='
+                dir('demo-app') {
+                    script {
+                        // Build Go application
+                        echo 'Building Go application...'
+                        sh '''
+                            go version
+                            go build -v -o bin/demo-app ./cmd/server
+                        '''
+
+                        // Run tests
+                        echo 'Running tests...'
+                        sh '''
+                            go test -v -cover ./...
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                echo '========== Stage 3: Docker Build =========='
+                dir('demo-app') {
+                    script {
+                        echo "Building Docker image: ${DOCKER_IMAGE}:v${APP_VERSION}"
+
+                        // Build Docker image using Minikube's Docker daemon
+                        sh """
+                            # Use Minikube's Docker daemon
+                            eval \$(minikube docker-env)
+
+                            # Build image
+                            docker build -t ${DOCKER_IMAGE}:v${APP_VERSION} .
+                            docker tag ${DOCKER_IMAGE}:v${APP_VERSION} ${DOCKER_IMAGE}:latest
+                            docker tag ${DOCKER_IMAGE}:v${APP_VERSION} ${DOCKER_IMAGE}:${GIT_COMMIT_SHORT}
+
+                            # List images
+                            docker images | grep ${DOCKER_IMAGE}
+                        """
+
+                        echo "✅ Docker image built successfully"
+                    }
+                }
+            }
+        }
+
+        stage('Security Scan') {
+            steps {
+                echo '========== Stage 4: Security Scan =========='
+                script {
+                    echo 'Running Trivy security scan...'
+
+                    // Check if Trivy is installed
+                    def trivyInstalled = sh(
+                        script: 'which trivy',
+                        returnStatus: true
+                    )
+
+                    if (trivyInstalled == 0) {
+                        sh """
+                            eval \$(minikube docker-env)
+                            trivy image --severity HIGH,CRITICAL ${DOCKER_IMAGE}:v${APP_VERSION} || true
+                        """
+                    } else {
+                        echo '⚠️  Trivy not installed, skipping security scan'
+                        echo 'Install: brew install trivy (macOS) or see https://aquasecurity.github.io/trivy'
+                    }
+                }
+            }
+        }
+
+        stage('Load to Minikube') {
+            steps {
+                echo '========== Stage 5: Load to Minikube =========='
+                script {
+                    echo 'Image already in Minikube Docker daemon (built in Stage 3)'
+
+                    // Verify image exists in Minikube
+                    sh """
+                        eval \$(minikube docker-env)
+                        docker images | grep ${DOCKER_IMAGE}:v${APP_VERSION}
+                    """
+
+                    echo "✅ Image ${DOCKER_IMAGE}:v${APP_VERSION} available in Minikube"
+                }
+            }
+        }
+
+        stage('Update Manifests') {
+            steps {
+                echo '========== Stage 6: Update Manifests =========='
+                script {
+                    echo 'Updating Helm values with new image tag...'
+
+                    withCredentials([usernamePassword(
+                        credentialsId: "${GIT_CREDENTIALS_ID}",
+                        usernameVariable: 'GIT_USERNAME',
+                        passwordVariable: 'GIT_PASSWORD' //pragma: allowlist secret
+                    )]) {
+                        sh """
+                            # Configure Git
+                            git config user.name "Jenkins CI"
+                            git config user.email "jenkins@ci.local"
+
+                            # Update Helm values file
+                            cd demo-app/helm-chart/demo-app
+
+                            # Update image tag in values-dev.yaml
+                            sed -i.bak 's/tag: ".*"/tag: "v${APP_VERSION}"/' values-dev.yaml
+                            rm values-dev.yaml.bak
+
+                            # Show changes
+                            echo "Updated values-dev.yaml:"
+                            grep -A 2 "image:" values-dev.yaml
+
+                            # Commit and push
+                            git add values-dev.yaml
+                            git commit -m "chore: update demo-app image to v${APP_VERSION} [skip ci]" || echo "No changes to commit"
+
+                            # Push using credentials
+                            git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/getneo/CKA.git ${GIT_BRANCH}
+                        """
+                    }
+
+                    echo "✅ Manifests updated and pushed to Git"
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo '========== Pipeline Complete =========='
+            script {
+                def duration = currentBuild.durationString.replace(' and counting', '')
+                echo "Build Duration: ${duration}"
+                echo "Build Status: ${currentBuild.currentResult}"
+            }
+        }
+
+        success {
+            echo '✅ Pipeline succeeded!'
+            echo "Image: ${DOCKER_IMAGE}:v${APP_VERSION}"
+            echo "Commit: ${GIT_COMMIT_SHORT}"
+            echo "ArgoCD will detect the manifest change and deploy automatically"
+        }
+
+        failure {
+            echo '❌ Pipeline failed!'
+            echo 'Check the console output above for errors'
+        }
+    }
+}

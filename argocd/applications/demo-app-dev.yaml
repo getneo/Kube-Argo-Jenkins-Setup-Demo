@@ -27,7 +27,7 @@ spec:
   # Source: Where to get the application manifests
   source:
     # Git repository URL
-    repoURL: https://github.com/your-username/CKA.git
+    repoURL: https://github.com/getneo/CKA.git
 
     # Branch, tag, or commit to track
     targetRevision: main
@@ -119,7 +119,7 @@ spec:
   project: default
 
   source:
-    repoURL: https://github.com/your-username/CKA.git
+    repoURL: https://github.com/getneo/CKA.git
     targetRevision: main
     path: demo-app/helm-chart/demo-app
 
@@ -189,7 +189,7 @@ spec:
   project: default
 
   source:
-    repoURL: https://github.com/your-username/CKA.git
+    repoURL: https://github.com/getneo/CKA.git
     targetRevision: main  # Use 'release' branch for production
     path: demo-app/helm-chart/demo-app
 

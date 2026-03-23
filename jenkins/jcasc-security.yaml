@@ -1,4 +1,6 @@
-# Jenkins Configuration as Code - Security Setup
+# Jenkins Configuration as Code - Security Setup (Fixed)
+# This version removes potential conflicts and uses simpler configuration
+
 jenkins:
   securityRealm:
     local:
@@ -15,9 +17,9 @@ jenkins:
   remotingSecurity:
     enabled: true
 
+  # Simplified crumb issuer (CSRF protection)
   crumbIssuer:
-    standard:
-      excludeClientIPFromCrumb: false
+    standard: {}
 
 security:
   apiToken:
@@ -31,3 +33,5 @@ security:
 unclassified:
   location:
     url: "http://jenkins.local:8080"
+
+# Made with Bob

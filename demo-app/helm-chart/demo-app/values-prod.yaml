@@ -82,20 +82,23 @@ serviceMonitor:
 networkPolicy:
   enabled: true
 
-# Use required anti-affinity for production
+# Use preferred anti-affinity for local/single-node setups
+# For multi-node production, change to requiredDuringSchedulingIgnoredDuringExecution
 affinity:
   podAntiAffinity:
-    requiredDuringSchedulingIgnoredDuringExecution:
-      - labelSelector:
-          matchExpressions:
-            - key: app
-              operator: In
-              values:
-                - demo-app
-        topologyKey: kubernetes.io/hostname
-    # Spread across availability zones if available
+    # Prefer spreading across nodes (soft requirement for local dev)
     preferredDuringSchedulingIgnoredDuringExecution:
       - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values:
+                  - demo-app
+          topologyKey: kubernetes.io/hostname
+      # Spread across availability zones if available
+      - weight: 50
         podAffinityTerm:
           labelSelector:
             matchExpressions:

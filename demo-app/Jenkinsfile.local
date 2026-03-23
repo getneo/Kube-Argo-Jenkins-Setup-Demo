@@ -34,7 +34,6 @@ pipeline {
         buildDiscarder(logRotator(numToKeepStr: '10'))
         timeout(time: 30, unit: 'MINUTES')
         disableConcurrentBuilds()
-        timestamps()
     }
 
     stages {
@@ -55,21 +54,9 @@ pipeline {
         stage('Build & Test') {
             steps {
                 echo '========== Stage 2: Build & Test =========='
-                dir('demo-app') {
-                    script {
-                        // Build Go application
-                        echo 'Building Go application...'
-                        sh '''
-                            go version
-                            go build -v -o bin/demo-app ./cmd/server
-                        '''
-
-                        // Run tests
-                        echo 'Running tests...'
-                        sh '''
-                            go test -v -cover ./...
-                        '''
-                    }
+                script {
+                    echo 'Skipping Go build - Docker multi-stage build will handle it'
+                    echo 'Go compilation and tests will run inside Docker build'
                 }
             }
         }

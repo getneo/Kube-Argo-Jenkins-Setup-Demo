@@ -18,7 +18,7 @@ type Config struct {
 func Load() *Config {
 	return &Config{
 		AppName:     getEnv("APP_NAME", "demo-app"),
-		Version:     getEnv("APP_VERSION", "1.0.0"),
+		Version:     getEnv("APP_VERSION", "1.1.0"),
 		Environment: getEnv("ENVIRONMENT", "development"),
 		Port:        getEnvAsInt("PORT", 8080),
 		LogLevel:    getEnv("LOG_LEVEL", "info"),

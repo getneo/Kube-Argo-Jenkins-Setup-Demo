@@ -24,6 +24,9 @@ fullnameOverride: ""
 # Number of replicas
 replicaCount: 2
 
+# Environment Values
+environment: staging
+
 # Deployment strategy
 strategy:
   type: RollingUpdate

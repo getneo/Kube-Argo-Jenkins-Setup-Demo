@@ -191,7 +191,10 @@ git add values-dev.yaml values.yaml
 if git diff --staged --quiet; then
     echo "No changes to commit"
 else
-    git commit -m "chore: update demo-app image to ${APP_VERSION} [skip ci]"
+    git commit -m "update demo-app image [skip ci]
+
+    update demo-app image to ${APP_VERSION}
+    "
     echo "✅ Changes committed"
 
     if [ "$SKIP_PUSH" = true ]; then

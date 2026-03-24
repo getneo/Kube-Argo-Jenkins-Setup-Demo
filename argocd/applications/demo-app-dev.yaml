@@ -42,11 +42,8 @@ spec:
         - values-dev.yaml
 
       # Override specific values (optional)
+      # Note: image.tag is managed in values-dev.yaml for GitOps workflow
       parameters:
-        - name: replicaCount
-          value: "1"
-        - name: image.tag
-          value: "latest"
         - name: ingress.hosts[0].host
           value: "demo-app-dev.local"
 
@@ -127,13 +124,8 @@ spec:
       valueFiles:
         - values.yaml  # Use default values
 
+      # Note: image.tag is managed in values.yaml for GitOps workflow
       parameters:
-        - name: replicaCount
-          value: "2"
-        - name: image.tag
-          value: "latest"
-        - name: environment
-          value: "staging"
         - name: ingress.hosts[0].host
           value: "demo-app-staging.local"
 
@@ -199,8 +191,6 @@ spec:
 
       parameters:
         # replicaCount is defined in values-prod.yaml (2 for local Minikube)
-        - name: image.tag
-          value: "1.0.0"  # Use specific version, not 'latest'
         - name: environment
           value: "production"
         - name: ingress.hosts[0].host

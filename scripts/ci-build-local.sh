@@ -12,15 +12,59 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Parse flags
+SKIP_BUILD=false
+SKIP_PUSH=false
+APP_VERSION=""
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --skip-build)
+            SKIP_BUILD=true
+            shift
+            ;;
+        --skip-push)
+            SKIP_PUSH=true
+            shift
+            ;;
+        --help|-h)
+            echo "Usage: $0 [VERSION] [OPTIONS]"
+            echo ""
+            echo "Arguments:"
+            echo "  VERSION          Semantic version (e.g., 1.0.1). If omitted, auto-increments from git tags"
+            echo ""
+            echo "Options:"
+            echo "  --skip-build     Skip Docker build stage (use existing image)"
+            echo "  --skip-push      Skip git push (commit only)"
+            echo "  --help, -h       Show this help message"
+            echo ""
+            echo "Examples:"
+            echo "  $0 1.0.1                    # Build and deploy version 1.0.1"
+            echo "  $0 1.0.1 --skip-build       # Update manifests only (image exists)"
+            echo "  $0 --skip-build             # Auto-increment version, skip build"
+            echo "  $0 1.0.1 --skip-push        # Build but don't push to git"
+            exit 0
+            ;;
+        *)
+            if [[ -z "$APP_VERSION" ]]; then
+                APP_VERSION="$1"
+            else
+                echo -e "${RED}Error: Unknown argument: $1${NC}"
+                exit 1
+            fi
+            shift
+            ;;
+    esac
+done
+
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}  Local CI Build Script${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 
 # Get version from user or use default
-if [ -z "$1" ]; then
-    echo -e "${YELLOW}No version specified. Usage: $0 <version>${NC}"
-    echo -e "${YELLOW}Example: $0 1.0.1${NC}"
+if [ -z "$APP_VERSION" ]; then
+    echo -e "${YELLOW}No version specified.${NC}"
     echo ""
     echo -e "${YELLOW}Using default version based on git...${NC}"
 
@@ -44,8 +88,6 @@ if [ -z "$1" ]; then
     if [ -n "$USER_VERSION" ]; then
         APP_VERSION="$USER_VERSION"
     fi
-else
-    APP_VERSION="$1"
 fi
 
 # Validate semantic version format
@@ -73,25 +115,41 @@ echo ""
 
 # Stage 2: Docker Build
 echo -e "${BLUE}========== Stage 2: Docker Build ==========${NC}"
-cd demo-app
+if [ "$SKIP_BUILD" = true ]; then
+    echo -e "${YELLOW}⚠️  Skipping Docker build (--skip-build flag)${NC}"
+    echo "Using existing image: ${APP_NAME}:${APP_VERSION}"
 
-echo "Setting up Minikube Docker environment..."
-eval $(minikube docker-env)
+    # Verify image exists
+    eval $(minikube docker-env)
+    if ! docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "^${APP_NAME}:${APP_VERSION}$"; then
+        echo -e "${RED}Error: Image ${APP_NAME}:${APP_VERSION} not found!${NC}"
+        echo "Available images:"
+        docker images | grep ${APP_NAME}
+        exit 1
+    fi
+    echo "✅ Image verified"
+else
+    cd demo-app
 
-echo "Building Docker image: ${APP_NAME}:${APP_VERSION}"
-docker build \
-    --build-arg VERSION="${APP_VERSION}" \
-    --build-arg BUILD_TIME="${BUILD_TIME}" \
-    --build-arg GIT_COMMIT="${GIT_COMMIT_SHORT}" \
-    -t ${APP_NAME}:${APP_VERSION} .
+    echo "Setting up Minikube Docker environment..."
+    eval $(minikube docker-env)
 
-# Tag with additional tags
-docker tag ${APP_NAME}:${APP_VERSION} ${APP_NAME}:latest
-docker tag ${APP_NAME}:${APP_VERSION} ${APP_NAME}:${GIT_COMMIT_SHORT}
+    echo "Building Docker image: ${APP_NAME}:${APP_VERSION}"
+    docker build \
+        --build-arg VERSION="${APP_VERSION}" \
+        --build-arg BUILD_TIME="${BUILD_TIME}" \
+        --build-arg GIT_COMMIT="${GIT_COMMIT_SHORT}" \
+        -t ${APP_NAME}:${APP_VERSION} .
 
-echo ""
-echo "✅ Docker images built:"
-docker images | grep ${APP_NAME} | head -5
+    # Tag with additional tags
+    docker tag ${APP_NAME}:${APP_VERSION} ${APP_NAME}:latest
+    docker tag ${APP_NAME}:${APP_VERSION} ${APP_NAME}:${GIT_COMMIT_SHORT}
+
+    echo ""
+    echo "✅ Docker images built:"
+    docker images | grep ${APP_NAME} | head -5
+    echo ""
+fi
 echo ""
 
 # Stage 3: Security Scan (optional)
@@ -107,22 +165,23 @@ echo ""
 
 # Stage 4: Update Manifests
 echo -e "${BLUE}========== Stage 4: Update Manifests ==========${NC}"
-cd helm-chart/demo-app
+cd "$(git rev-parse --show-toplevel)/demo-app/helm-chart/demo-app"
 
-echo "Updating Helm values with new image tag..."
+echo "Updating Helm values with new image tag: ${APP_VERSION}"
 
-# Update dev environment (uses latest)
-sed -i.bak "s/tag: \".*\"/tag: \"latest\"/" values-dev.yaml
+# Update dev environment (uses semantic version)
+sed -i.bak "s/tag: \".*\"/tag: \"${APP_VERSION}\"/" values-dev.yaml
 rm values-dev.yaml.bak
 
-# Update staging environment (uses latest)
-sed -i.bak "s/tag: \".*\"/tag: \"latest\"/" values.yaml
+# Update staging environment (uses semantic version)
+sed -i.bak "s/tag: \".*\"/tag: \"${APP_VERSION}\"/" values.yaml
 rm values.yaml.bak
 
-echo "Updated values-dev.yaml and values.yaml to use 'latest'"
+echo "✅ Updated values-dev.yaml and values.yaml to version: ${APP_VERSION}"
 echo ""
 echo -e "${YELLOW}Note: Production (values-prod.yaml) should be updated manually${NC}"
 echo -e "${YELLOW}      with specific version: ${APP_VERSION}${NC}"
+echo -e "${YELLOW}      This ensures production deployments are intentional and reviewed.${NC}"
 echo ""
 
 # Stage 5: Git Commit and Push
@@ -133,15 +192,21 @@ if git diff --staged --quiet; then
     echo "No changes to commit"
 else
     git commit -m "chore: update demo-app image to ${APP_VERSION} [skip ci]"
+    echo "✅ Changes committed"
 
-    echo ""
-    echo -e "${YELLOW}Ready to push to Git. Push now? (y/n)${NC}"
-    read -r response
-    if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-        git push origin main
-        echo "✅ Changes pushed to Git"
+    if [ "$SKIP_PUSH" = true ]; then
+        echo -e "${YELLOW}⚠️  Skipping git push (--skip-push flag)${NC}"
+        echo "Run 'git push origin main' manually when ready."
     else
-        echo "⚠️  Changes committed but not pushed. Run 'git push' manually."
+        echo ""
+        echo -e "${YELLOW}Ready to push to Git. Push now? (y/n)${NC}"
+        read -r response
+        if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+            git push origin main
+            echo "✅ Changes pushed to Git"
+        else
+            echo "⚠️  Changes committed but not pushed. Run 'git push' manually."
+        fi
     fi
 fi
 echo ""
@@ -165,24 +230,6 @@ else
 fi
 echo ""
 
-# Stage 7: Restart Deployments
-echo -e "${BLUE}========== Stage 7: Restart Deployments ==========${NC}"
-echo "Restarting dev and staging deployments..."
-kubectl rollout restart deployment/demo-app-dev -n demo-app-dev 2>/dev/null || echo "⚠️  demo-app-dev not found"
-kubectl rollout restart deployment/demo-app-staging -n demo-app-staging 2>/dev/null || echo "⚠️  demo-app-staging not found"
-echo ""
-
-echo -e "${YELLOW}Note: Production deployment requires manual update${NC}"
-echo "To deploy to production:"
-echo "  1. Edit demo-app/helm-chart/demo-app/values-prod.yaml"
-echo "  2. Change image.tag to \"${APP_VERSION}\""
-echo "  3. Commit and push"
-echo "  4. Manually sync in ArgoCD"
-echo ""
-
-echo "Waiting for dev rollout to complete..."
-kubectl rollout status deployment/demo-app-dev -n demo-app-dev --timeout=60s 2>/dev/null || echo "⚠️  Timeout or deployment not found"
-echo ""
 
 # Summary
 echo -e "${GREEN}========================================${NC}"
@@ -193,18 +240,25 @@ echo "Image: ${APP_NAME}:${APP_VERSION}"
 echo "Commit: ${GIT_COMMIT_SHORT}"
 echo "Tags: ${APP_VERSION}, latest, ${GIT_COMMIT_SHORT}"
 echo ""
-echo "Check deployment status:"
-echo "  kubectl get pods -n demo-app-dev"
-echo "  kubectl get pods -n demo-app-staging"
+echo -e "${BLUE}Next Steps:${NC}"
 echo ""
-echo "Test the application:"
-echo "  kubectl port-forward -n demo-app-dev svc/demo-app-dev 8082:80 &"
-echo "  curl http://localhost:8082/health"
+echo "1. ArgoCD will automatically detect the manifest changes and sync"
+echo "   Check ArgoCD UI: kubectl port-forward -n argocd svc/argocd-server 8081:443 &"
+echo "   URL: https://localhost:8081"
 echo ""
-echo "ArgoCD will detect the manifest change and sync automatically."
-echo "Check ArgoCD: kubectl port-forward -n argocd svc/argocd-server 8081:443 &"
+echo "2. Monitor deployment status:"
+echo "   kubectl get pods -n demo-app-dev"
+echo "   kubectl get pods -n demo-app-staging"
 echo ""
-echo -e "${YELLOW}For production deployment, see instructions above.${NC}"
+echo "3. Test the application:"
+echo "   kubectl port-forward -n demo-app-dev svc/demo-app-dev 8082:80 &"
+echo "   curl http://localhost:8082/health"
+echo ""
+echo -e "${YELLOW}Production Deployment:${NC}"
+echo "  1. Edit demo-app/helm-chart/demo-app/values-prod.yaml"
+echo "  2. Change image.tag to \"${APP_VERSION}\""
+echo "  3. Commit and push changes"
+echo "  4. ArgoCD will sync production automatically (or manually sync in UI)"
 echo ""
 
 # Made with Bob

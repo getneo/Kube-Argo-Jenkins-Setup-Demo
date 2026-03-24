@@ -12,7 +12,7 @@ app:
 image:
   repository: demo-app
   pullPolicy: IfNotPresent
-  tag: "latest"
+  tag: "1.1.0"
 
 # Image pull secrets (if using private registry)
 imagePullSecrets: []

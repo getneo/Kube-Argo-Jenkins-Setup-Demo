@@ -42,8 +42,8 @@ resources:
 
 autoscaling:
   enabled: true
-  minReplicas: 3
-  maxReplicas: 10
+  minReplicas: 2  # Reduced for local Minikube with limited resources
+  maxReplicas: 5  # Reduced for local environment
   targetCPUUtilizationPercentage: 70
   targetMemoryUtilizationPercentage: 80
   behavior:

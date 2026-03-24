@@ -198,8 +198,7 @@ spec:
         - values-prod.yaml  # Use production values
 
       parameters:
-        - name: replicaCount
-          value: "3"
+        # replicaCount is defined in values-prod.yaml (2 for local Minikube)
         - name: image.tag
           value: "1.0.0"  # Use specific version, not 'latest'
         - name: environment

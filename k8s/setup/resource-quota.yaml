@@ -45,6 +45,7 @@ spec:
     persistentvolumeclaims: "10"
 ---
 # Demo app namespace quota
+# Increased for local development with 3 environments (dev, staging, prod)
 apiVersion: v1
 kind: ResourceQuota
 metadata:
@@ -52,8 +53,8 @@ metadata:
   namespace: demo-app
 spec:
   hard:
-    requests.cpu: "2"
-    requests.memory: 2Gi
-    limits.cpu: "3"
-    limits.memory: 4Gi
-    pods: "10"
+    requests.cpu: "3"
+    requests.memory: 3Gi
+    limits.cpu: "6"
+    limits.memory: 6Gi
+    pods: "15"

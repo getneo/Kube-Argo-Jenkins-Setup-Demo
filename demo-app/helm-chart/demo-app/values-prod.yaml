@@ -1,8 +1,10 @@
 # Production Environment Values
 # Override default values for production environment
+# Note: For local Minikube with limited resources, using 2 replicas
+# In real production with multiple nodes, increase to 3+
 
 environment: production
-replicaCount: 3
+replicaCount: 2
 
 image:
   repository: demo-app

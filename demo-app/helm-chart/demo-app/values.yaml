@@ -5,7 +5,6 @@
 # Application configuration
 app:
   name: demo-app
-  version: "1.0.0"
 
 # Image configuration
 # Note: Namespace is managed by ArgoCD, not by Helm chart

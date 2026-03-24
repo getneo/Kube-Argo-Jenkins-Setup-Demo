@@ -3,7 +3,7 @@ name: demo-app
 description: A production-ready demo application with security, observability, and scalability best practices
 type: application
 version: 1.0.0
-appVersion: "1.0.0"
+# appVersion removed - use image.tag in values files as single source of truth
 keywords:
   - demo
   - golang

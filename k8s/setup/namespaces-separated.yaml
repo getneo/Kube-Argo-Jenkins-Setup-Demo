@@ -1,0 +1,199 @@
+# Separate Namespaces for Each Environment
+# Best practice: Isolate environments for better security and resource management
+
+---
+# Development Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo-app-dev
+  labels:
+    environment: development
+    managed-by: argocd
+    app: demo-app
+
+---
+# Development Resource Quota
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: demo-app-dev-quota
+  namespace: demo-app-dev
+spec:
+  hard:
+    requests.cpu: "500m"      # 0.5 CPU cores
+    requests.memory: 512Mi    # 512 MB
+    limits.cpu: "1"           # 1 CPU core
+    limits.memory: 1Gi        # 1 GB
+    pods: "5"                 # Max 5 pods
+
+---
+# Staging Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo-app-staging
+  labels:
+    environment: staging
+    managed-by: argocd
+    app: demo-app
+
+---
+# Staging Resource Quota
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: demo-app-staging-quota
+  namespace: demo-app-staging
+spec:
+  hard:
+    requests.cpu: "1"         # 1 CPU core
+    requests.memory: 1Gi      # 1 GB
+    limits.cpu: "2"           # 2 CPU cores
+    limits.memory: 2Gi        # 2 GB
+    pods: "10"                # Max 10 pods
+
+---
+# Production Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo-app-prod
+  labels:
+    environment: production
+    managed-by: argocd
+    app: demo-app
+
+---
+# Production Resource Quota
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: demo-app-prod-quota
+  namespace: demo-app-prod
+spec:
+  hard:
+    requests.cpu: "2"         # 2 CPU cores
+    requests.memory: 2Gi      # 2 GB
+    limits.cpu: "4"           # 4 CPU cores
+    limits.memory: 4Gi        # 4 GB
+    pods: "10"                # Max 10 pods
+
+---
+# Development Network Policy (Optional - for enhanced security)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: demo-app-dev-netpol
+  namespace: demo-app-dev
+spec:
+  podSelector:
+    matchLabels:
+      app: demo-app
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: demo-app-dev
+        - namespaceSelector:
+            matchLabels:
+              name: argocd
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 53  # DNS
+        - protocol: UDP
+          port: 53  # DNS
+    - to:
+        - namespaceSelector: {}
+
+---
+# Staging Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: demo-app-staging-netpol
+  namespace: demo-app-staging
+spec:
+  podSelector:
+    matchLabels:
+      app: demo-app
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: demo-app-staging
+        - namespaceSelector:
+            matchLabels:
+              name: argocd
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 53
+        - protocol: UDP
+          port: 53
+    - to:
+        - namespaceSelector: {}
+
+---
+# Production Network Policy (More restrictive)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: demo-app-prod-netpol
+  namespace: demo-app-prod
+spec:
+  podSelector:
+    matchLabels:
+      app: demo-app
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: demo-app-prod
+        - namespaceSelector:
+            matchLabels:
+              name: argocd
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 53
+        - protocol: UDP
+          port: 53
+    - to:
+        - namespaceSelector: {}
+
+# Made with Bob

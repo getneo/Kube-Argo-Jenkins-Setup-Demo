@@ -67,13 +67,11 @@ Create the name of the service account to use
 
 {{/*
 Create the namespace
+Note: Namespace is managed by ArgoCD, not by Helm chart
+This helper is kept for compatibility but always returns Release.Namespace
 */}}
 {{- define "demo-app.namespace" -}}
-{{- if .Values.namespace.create }}
-{{- .Values.namespace.name | default .Release.Namespace }}
-{{- else }}
 {{- .Release.Namespace }}
-{{- end }}
 {{- end }}
 
 {{/*

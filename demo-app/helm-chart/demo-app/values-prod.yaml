@@ -9,7 +9,7 @@ replicaCount: 2
 image:
   repository: demo-app
   tag: "1.0.0"
-  pullPolicy: Always
+  pullPolicy: Never  # Use Never for local Minikube images
 
 # imagePullSecrets:
 #   - name: registry-credentials
